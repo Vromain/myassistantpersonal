@@ -1,0 +1,569 @@
+openapi: 3.0.3
+info:
+  title: Connected Accounts API
+  version: 1.0.0
+
+paths:
+  /accounts:
+    get:
+      tags:
+        - Connected Accounts
+      summary: List connected accounts
+      description: |
+        Get all connected accounts for the current user.
+        Free tier users can have up to 5 accounts, premium users up to 10 (FR-030).
+      operationId: listConnectedAccounts
+      parameters:
+        - name: platform
+          in: query
+          description: Filter by platform
+          schema:
+            type: string
+            enum: [gmail, outlook, exchange, imap, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+        - name: status
+          in: query
+          description: Filter by connection status
+          schema:
+            type: string
+            enum: [active, expired, error, disconnected]
+      responses:
+        '200':
+          description: Connected accounts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+                  total:
+                    type: integer
+                    description: Total number of connected accounts
+                    example: 3
+                  maxAccounts:
+                    type: integer
+                    description: Maximum allowed accounts for user's tier
+                    example: 5
+              example:
+                accounts:
+                  - id: "660e8400-e29b-41d4-a716-446655440001"
+                    platform: "gmail"
+                    accountIdentifier: "user@gmail.com"
+                    displayName: "Personal Email"
+                    connectionStatus: "active"
+                    lastSyncAt: "2025-11-16T14:20:00Z"
+                    lastSyncStatus: "success"
+                  - id: "660e8400-e29b-41d4-a716-446655440002"
+                    platform: "slack"
+                    accountIdentifier: "workspace.slack.com"
+                    displayName: "Work Slack"
+                    connectionStatus: "active"
+                    lastSyncAt: "2025-11-16T14:18:00Z"
+                    lastSyncStatus: "success"
+                total: 2
+                maxAccounts: 5
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/{accountId}:
+    get:
+      tags:
+        - Connected Accounts
+      summary: Get account details
+      description: Retrieve details of a specific connected account
+      operationId: getConnectedAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Connected account ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Connected Accounts
+      summary: Update account settings
+      description: Update connected account display name and settings
+      operationId: updateConnectedAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  description: Custom display name for the account
+                  maxLength: 255
+                isActive:
+                  type: boolean
+                  description: Enable/disable message syncing for this account
+            example:
+              displayName: "Work Gmail"
+              isActive: true
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Connected Accounts
+      summary: Delete connected account
+      description: |
+        Disconnect and delete a connected account.
+        All messages from this account will be deleted (FR-021).
+      operationId: deleteConnectedAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Account deleted successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/connect/{platform}:
+    post:
+      tags:
+        - Connected Accounts
+      summary: Connect new account
+      description: |
+        Connect a new email, social media, or messaging account via OAuth2 (FR-001, FR-002, FR-003).
+        Users are limited by their subscription tier (5 for free, 10 for premium - FR-030).
+      operationId: connectAccount
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          description: Platform to connect
+          schema:
+            type: string
+            enum: [gmail, outlook, exchange, imap, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oauthCode
+              properties:
+                oauthCode:
+                  type: string
+                  description: OAuth authorization code from platform
+                redirectUri:
+                  type: string
+                  format: uri
+                  description: OAuth redirect URI used for authorization
+                displayName:
+                  type: string
+                  description: Custom display name for the account
+                  maxLength: 255
+            example:
+              oauthCode: "4/0AX4XfWh..."
+              redirectUri: "https://app.commhub.example.com/connect/callback"
+              displayName: "Work Email"
+      responses:
+        '201':
+          description: Account connected successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+        '400':
+          description: Invalid request or connection failed
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                invalidCode:
+                  value:
+                    code: "INVALID_OAUTH_CODE"
+                    message: "Invalid or expired OAuth authorization code"
+                accountExists:
+                  value:
+                    code: "ACCOUNT_ALREADY_CONNECTED"
+                    message: "This account is already connected"
+                limitReached:
+                  value:
+                    code: "ACCOUNT_LIMIT_REACHED"
+                    message: "Maximum number of connected accounts reached for your subscription tier"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/{accountId}/disconnect:
+    post:
+      tags:
+        - Connected Accounts
+      summary: Disconnect account
+      description: |
+        Disconnect an account and revoke platform access (FR-021).
+        Messages from this account will be retained based on user's data retention settings.
+      operationId: disconnectAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: deleteMessages
+          in: query
+          description: Whether to delete all messages from this account
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Account disconnected successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  connectionStatus:
+                    type: string
+                    enum: [disconnected]
+                  disconnectedAt:
+                    type: string
+                    format: date-time
+                  messagesDeleted:
+                    type: boolean
+                    description: Whether messages were deleted
+              example:
+                id: "660e8400-e29b-41d4-a716-446655440001"
+                connectionStatus: "disconnected"
+                disconnectedAt: "2025-11-16T15:00:00Z"
+                messagesDeleted: false
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/{accountId}/sync:
+    post:
+      tags:
+        - Connected Accounts
+      summary: Trigger manual sync
+      description: |
+        Manually trigger message synchronization for an account.
+        Normally messages sync automatically every 60 seconds (FR-004).
+      operationId: syncAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: fullSync
+          in: query
+          description: Perform full sync instead of incremental
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '202':
+          description: Sync initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                    format: uuid
+                  syncStatus:
+                    type: string
+                    enum: [pending, in_progress]
+                  initiatedAt:
+                    type: string
+                    format: date-time
+                  estimatedCompletionSeconds:
+                    type: integer
+                    description: Estimated time to completion in seconds
+              example:
+                accountId: "660e8400-e29b-41d4-a716-446655440001"
+                syncStatus: "in_progress"
+                initiatedAt: "2025-11-16T15:05:00Z"
+                estimatedCompletionSeconds: 30
+        '400':
+          description: Sync already in progress or account not active
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                syncInProgress:
+                  value:
+                    code: "SYNC_IN_PROGRESS"
+                    message: "Synchronization is already in progress for this account"
+                accountInactive:
+                  value:
+                    code: "ACCOUNT_INACTIVE"
+                    message: "Cannot sync inactive or disconnected account"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/{accountId}/sync-status:
+    get:
+      tags:
+        - Connected Accounts
+      summary: Get sync status
+      description: Check the current synchronization status of an account
+      operationId: getSyncStatus
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Sync status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                    format: uuid
+                  lastSyncAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  lastSyncStatus:
+                    type: string
+                    enum: [success, error, pending]
+                  syncErrorMessage:
+                    type: string
+                    nullable: true
+                  currentSyncStatus:
+                    type: string
+                    enum: [idle, in_progress, pending]
+                  messagesSynced:
+                    type: integer
+                    description: Number of messages synced in last sync
+                  nextScheduledSync:
+                    type: string
+                    format: date-time
+                    description: When next automatic sync is scheduled
+              example:
+                accountId: "660e8400-e29b-41d4-a716-446655440001"
+                lastSyncAt: "2025-11-16T14:20:00Z"
+                lastSyncStatus: "success"
+                syncErrorMessage: null
+                currentSyncStatus: "idle"
+                messagesSynced: 15
+                nextScheduledSync: "2025-11-16T15:20:00Z"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/{accountId}/reconnect:
+    post:
+      tags:
+        - Connected Accounts
+      summary: Reconnect expired account
+      description: |
+        Reconnect an account with expired credentials by providing new OAuth code.
+        Useful when token expires or user needs to re-authenticate (FR-024).
+      operationId: reconnectAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - oauthCode
+              properties:
+                oauthCode:
+                  type: string
+                  description: New OAuth authorization code
+                redirectUri:
+                  type: string
+                  format: uri
+            example:
+              oauthCode: "4/0AX4XfWh..."
+              redirectUri: "https://app.commhub.example.com/reconnect/callback"
+      responses:
+        '200':
+          description: Account reconnected successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+        '400':
+          description: Invalid OAuth code
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "INVALID_OAUTH_CODE"
+                message: "Invalid or expired OAuth authorization code"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /accounts/platforms:
+    get:
+      tags:
+        - Connected Accounts
+      summary: Get supported platforms
+      description: List all supported platforms and their OAuth requirements
+      operationId: getSupportedPlatforms
+      security: []
+      responses:
+        '200':
+          description: Supported platforms list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platforms:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "gmail"
+                        name:
+                          type: string
+                          example: "Gmail"
+                        category:
+                          type: string
+                          enum: [email, social, messaging]
+                          example: "email"
+                        authType:
+                          type: string
+                          enum: [oauth2, api_key]
+                          example: "oauth2"
+                        requiredScopes:
+                          type: array
+                          items:
+                            type: string
+                          example: ["https://www.googleapis.com/auth/gmail.readonly"]
+                        features:
+                          type: array
+                          items:
+                            type: string
+                          example: ["read", "send", "attachments"]
+              example:
+                platforms:
+                  - id: "gmail"
+                    name: "Gmail"
+                    category: "email"
+                    authType: "oauth2"
+                    requiredScopes: ["https://www.googleapis.com/auth/gmail.modify"]
+                    features: ["read", "send", "attachments", "labels"]
+                  - id: "slack"
+                    name: "Slack"
+                    category: "messaging"
+                    authType: "oauth2"
+                    requiredScopes: ["channels:read", "chat:write"]
+                    features: ["read", "send", "reactions"]
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

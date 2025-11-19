@@ -1,0 +1,305 @@
+openapi: 3.0.3
+info:
+  title: AI-Powered Communication Hub API
+  version: 1.0.0
+  description: |
+    REST API for the AI-Powered Communication Hub - a unified platform for managing email, social networks,
+    and instant messaging with AI-powered features including priority scoring, smart replies, and automatic categorization.
+
+    ## Features
+    - Unified inbox across multiple communication platforms
+    - AI-powered message prioritization and categorization
+    - Smart reply suggestions
+    - Advanced search and filtering
+    - Analytics dashboard
+    - Real-time synchronization
+
+    ## Authentication
+    All endpoints require OAuth2 Bearer token authentication except for the authentication endpoints themselves.
+
+    ## Rate Limiting
+    - Free tier: 100 requests per minute
+    - Premium tier: 1000 requests per minute
+
+    Rate limit information is included in response headers:
+    - `X-RateLimit-Limit`: Maximum requests per window
+    - `X-RateLimit-Remaining`: Remaining requests in current window
+    - `X-RateLimit-Reset`: Unix timestamp when the window resets
+
+  contact:
+    name: API Support
+    email: support@commhub.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.commhub.example.com/v1
+    description: Production server
+  - url: https://staging-api.commhub.example.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: OAuth2 authentication and authorization endpoints
+  - name: Connected Accounts
+    description: Manage connected email, social media, and messaging platform accounts
+  - name: Messages
+    description: Unified message inbox operations
+  - name: Categories
+    description: Message categorization and custom category management
+  - name: AI Services
+    description: AI-powered features (replies, categorization, priority scoring)
+  - name: Notifications
+    description: Notification preferences and delivery
+  - name: Analytics
+    description: Communication analytics and insights
+  - name: Users
+    description: User profile and preferences management
+  - name: Search
+    description: Advanced message search
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    $ref: './auth.yaml#/paths/~1auth~1login'
+  /auth/logout:
+    $ref: './auth.yaml#/paths/~1auth~1logout'
+  /auth/refresh:
+    $ref: './auth.yaml#/paths/~1auth~1refresh'
+  /auth/register:
+    $ref: './auth.yaml#/paths/~1auth~1register'
+
+  # Connected accounts endpoints
+  /accounts:
+    $ref: './accounts.yaml#/paths/~1accounts'
+  /accounts/{accountId}:
+    $ref: './accounts.yaml#/paths/~1accounts~1{accountId}'
+  /accounts/{accountId}/sync:
+    $ref: './accounts.yaml#/paths/~1accounts~1{accountId}~1sync'
+  /accounts/connect/{platform}:
+    $ref: './accounts.yaml#/paths/~1accounts~1connect~1{platform}'
+  /accounts/{accountId}/disconnect:
+    $ref: './accounts.yaml#/paths/~1accounts~1{accountId}~1disconnect'
+
+  # Messages endpoints
+  /messages:
+    $ref: './messages.yaml#/paths/~1messages'
+  /messages/{messageId}:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}'
+  /messages/{messageId}/read:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1read'
+  /messages/{messageId}/archive:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1archive'
+  /messages/{messageId}/reply:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1reply'
+  /messages/bulk/mark-read:
+    $ref: './messages.yaml#/paths/~1messages~1bulk~1mark-read'
+  /messages/bulk/archive:
+    $ref: './messages.yaml#/paths/~1messages~1bulk~1archive'
+  /messages/bulk/delete:
+    $ref: './messages.yaml#/paths/~1messages~1bulk~1delete'
+
+  # Categories endpoints
+  /categories:
+    $ref: './categories.yaml#/paths/~1categories'
+  /categories/{categoryId}:
+    $ref: './categories.yaml#/paths/~1categories~1{categoryId}'
+
+  # AI service endpoints
+  /ai/reply-suggestions:
+    $ref: './ai.yaml#/paths/~1ai~1reply-suggestions'
+  /ai/categorize:
+    $ref: './ai.yaml#/paths/~1ai~1categorize'
+  /ai/priority-score:
+    $ref: './ai.yaml#/paths/~1ai~1priority-score'
+  /ai/feedback:
+    $ref: './ai.yaml#/paths/~1ai~1feedback'
+
+  # Analytics endpoints
+  /analytics/overview:
+    $ref: './analytics.yaml#/paths/~1analytics~1overview'
+  /analytics/response-times:
+    $ref: './analytics.yaml#/paths/~1analytics~1response-times'
+  /analytics/top-contacts:
+    $ref: './analytics.yaml#/paths/~1analytics~1top-contacts'
+  /analytics/platform-distribution:
+    $ref: './analytics.yaml#/paths/~1analytics~1platform-distribution'
+
+  # Search endpoint
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Search messages
+      description: Full-text search across all messages with advanced filtering (FR-025)
+      operationId: searchMessages
+      parameters:
+        - name: q
+          in: query
+          description: Search query string
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            example: "urgent meeting"
+        - name: platform
+          in: query
+          description: Filter by platform
+          schema:
+            type: string
+            enum: [gmail, outlook, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+        - name: category
+          in: query
+          description: Filter by category ID
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          description: Filter by sender email/identifier
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          description: Filter messages after this date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          description: Filter messages before this date (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: hasAttachment
+          in: query
+          description: Filter messages with attachments
+          schema:
+            type: boolean
+        - name: isUrgent
+          in: query
+          description: Filter urgent messages only
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of results to skip (pagination)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Message'
+                  total:
+                    type: integer
+                    description: Total number of matching messages
+                    example: 156
+                  limit:
+                    type: integer
+                    example: 20
+                  offset:
+                    type: integer
+                    example: 0
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  # User endpoints
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      description: Returns the authenticated user's profile and preferences
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/User'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Users
+      summary: Update user preferences
+      description: Update user profile and preferences (FR-020)
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/UserPreferencesUpdate'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/User'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /users/me/data:
+    delete:
+      tags:
+        - Users
+      summary: Delete all user data
+      description: Permanently delete all user data including messages, accounts, and preferences (FR-021)
+      operationId: deleteUserData
+      responses:
+        '204':
+          description: User data deleted successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /auth/login or /auth/register endpoints.
+        Include in Authorization header as: `Authorization: Bearer <token>`

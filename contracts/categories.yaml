@@ -1,0 +1,515 @@
+openapi: 3.0.3
+info:
+  title: Categories API
+  version: 1.0.0
+
+paths:
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: List categories
+      description: |
+        Get all categories available to the user, including predefined system categories
+        (Work, Personal, Shopping, Social, Promotions, Updates - FR-012) and user-created custom categories (FR-013).
+      operationId: listCategories
+      parameters:
+        - name: includeInactive
+          in: query
+          description: Include inactive categories
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Category'
+                  predefinedCount:
+                    type: integer
+                    description: Number of predefined system categories
+                    example: 6
+                  customCount:
+                    type: integer
+                    description: Number of user-created categories
+                    example: 3
+              example:
+                categories:
+                  - id: "880e8400-e29b-41d4-a716-446655440001"
+                    userId: null
+                    name: "Work"
+                    slug: "work"
+                    color: "#3B82F6"
+                    icon: "briefcase"
+                    isPredefined: true
+                    autoAssignmentEnabled: true
+                    description: "Professional communications and work-related messages"
+                    sortOrder: 1
+                  - id: "880e8400-e29b-41d4-a716-446655440002"
+                    userId: null
+                    name: "Personal"
+                    slug: "personal"
+                    color: "#10B981"
+                    icon: "user"
+                    isPredefined: true
+                    autoAssignmentEnabled: true
+                    sortOrder: 2
+                  - id: "880e8400-e29b-41d4-a716-446655440010"
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    name: "Family"
+                    slug: "family"
+                    color: "#F59E0B"
+                    icon: "users"
+                    isPredefined: false
+                    autoAssignmentEnabled: true
+                    sortOrder: 10
+                predefinedCount: 6
+                customCount: 1
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Categories
+      summary: Create custom category
+      description: Create a new custom category for message organization (FR-013)
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/CategoryCreate'
+            example:
+              name: "Family"
+              slug: "family"
+              color: "#F59E0B"
+              icon: "users"
+              description: "Messages from family members"
+              autoAssignmentEnabled: true
+              autoAssignmentRules:
+                keywords: ["mom", "dad", "sister", "brother"]
+                senderPatterns: ["*@family-domain.com"]
+                minConfidence: 0.7
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Category'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                slugExists:
+                  value:
+                    code: "SLUG_EXISTS"
+                    message: "A category with this slug already exists"
+                invalidColor:
+                  value:
+                    code: "INVALID_COLOR"
+                    message: "Color must be a valid hex color code (e.g., #FF5733)"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /categories/{categoryId}:
+    get:
+      tags:
+        - Categories
+      summary: Get category details
+      description: Retrieve details of a specific category
+      operationId: getCategory
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          description: Category ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Category details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Category'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Categories
+      summary: Update category
+      description: |
+        Update a custom category. Predefined system categories cannot be modified (FR-012).
+        Users can update name, color, icon, auto-assignment rules, etc.
+      operationId: updateCategory
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/CategoryUpdate'
+            example:
+              name: "Close Family"
+              color: "#EF4444"
+              autoAssignmentEnabled: true
+              autoAssignmentRules:
+                keywords: ["mom", "dad", "sister", "brother", "parents"]
+                senderPatterns: ["*@family-domain.com", "mom@*", "dad@*"]
+                minConfidence: 0.8
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Category'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Cannot modify predefined category
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "CANNOT_MODIFY_PREDEFINED"
+                message: "Predefined system categories cannot be modified"
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Categories
+      summary: Delete category
+      description: |
+        Delete a custom category. Predefined system categories cannot be deleted.
+        Messages assigned to this category will be uncategorized.
+      operationId: deleteCategory
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Category deleted successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '403':
+          description: Cannot delete predefined category
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "CANNOT_DELETE_PREDEFINED"
+                message: "Predefined system categories cannot be deleted"
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /categories/{categoryId}/messages:
+    get:
+      tags:
+        - Categories
+      summary: Get messages in category
+      description: Retrieve all messages assigned to a specific category
+      operationId: getCategoryMessages
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: readStatus
+          in: query
+          description: Filter by read status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          description: Number of results to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Category messages retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Message'
+                  total:
+                    type: integer
+                    example: 128
+                  limit:
+                    type: integer
+                    example: 50
+                  offset:
+                    type: integer
+                    example: 0
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /categories/{categoryId}/stats:
+    get:
+      tags:
+        - Categories
+      summary: Get category statistics
+      description: Retrieve statistics for messages in a category
+      operationId: getCategoryStats
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Category statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categoryId:
+                    type: string
+                    format: uuid
+                  categoryName:
+                    type: string
+                  totalMessages:
+                    type: integer
+                    description: Total messages in category
+                    example: 247
+                  unreadMessages:
+                    type: integer
+                    example: 32
+                  urgentMessages:
+                    type: integer
+                    example: 5
+                  averagePriorityScore:
+                    type: number
+                    format: float
+                    example: 62.5
+                  topSenders:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        senderName:
+                          type: string
+                        senderIdentifier:
+                          type: string
+                        messageCount:
+                          type: integer
+                    example:
+                      - senderName: "Alice Smith"
+                        senderIdentifier: "alice@company.com"
+                        messageCount: 45
+                  autoAssignmentAccuracy:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 1
+                    description: Accuracy of AI auto-categorization for this category (FR-014)
+                    example: 0.85
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /categories/reorder:
+    post:
+      tags:
+        - Categories
+      summary: Reorder categories
+      description: Update the display order of categories
+      operationId: reorderCategories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - categoryIds
+              properties:
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: Array of category IDs in desired order
+                  example:
+                    - "880e8400-e29b-41d4-a716-446655440001"
+                    - "880e8400-e29b-41d4-a716-446655440010"
+                    - "880e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Categories reordered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Category'
+        '400':
+          description: Invalid category IDs
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "INVALID_CATEGORY_IDS"
+                message: "One or more category IDs are invalid or don't belong to the user"
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /categories/predefined:
+    get:
+      tags:
+        - Categories
+      summary: Get predefined categories
+      description: Get only the system predefined categories (FR-012)
+      operationId: getPredefinedCategories
+      security: []
+      responses:
+        '200':
+          description: Predefined categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Category'
+              example:
+                categories:
+                  - id: "880e8400-e29b-41d4-a716-446655440001"
+                    name: "Work"
+                    slug: "work"
+                    color: "#3B82F6"
+                    icon: "briefcase"
+                    isPredefined: true
+                    description: "Professional communications and work-related messages"
+                  - id: "880e8400-e29b-41d4-a716-446655440002"
+                    name: "Personal"
+                    slug: "personal"
+                    color: "#10B981"
+                    icon: "user"
+                    isPredefined: true
+                    description: "Personal messages from friends and family"
+                  - id: "880e8400-e29b-41d4-a716-446655440003"
+                    name: "Shopping"
+                    slug: "shopping"
+                    color: "#F59E0B"
+                    icon: "shopping-cart"
+                    isPredefined: true
+                  - id: "880e8400-e29b-41d4-a716-446655440004"
+                    name: "Social"
+                    slug: "social"
+                    color: "#8B5CF6"
+                    icon: "users"
+                    isPredefined: true
+                  - id: "880e8400-e29b-41d4-a716-446655440005"
+                    name: "Promotions"
+                    slug: "promotions"
+                    color: "#EF4444"
+                    icon: "tag"
+                    isPredefined: true
+                  - id: "880e8400-e29b-41d4-a716-446655440006"
+                    name: "Updates"
+                    slug: "updates"
+                    color: "#6B7280"
+                    icon: "bell"
+                    isPredefined: true
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

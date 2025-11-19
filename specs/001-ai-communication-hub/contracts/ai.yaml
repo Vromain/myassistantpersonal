@@ -1,0 +1,196 @@
+paths:
+  /ai/replies:
+    post:
+      summary: Generate AI reply suggestions
+      description: Generate 3-5 contextual reply suggestions for a message using Ollama AI
+      tags: [AI Services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message_id:
+                  type: string
+                  format: uuid
+                context:
+                  type: object
+                  properties:
+                    conversation_history:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          sender:
+                            type: string
+                          content:
+                            type: string
+                          timestamp:
+                            type: string
+                            format: date-time
+                    user_preferences:
+                      type: object
+                      properties:
+                        tone:
+                          type: string
+                          enum: [formal, casual, friendly]
+                        language:
+                          type: string
+              required: [message_id]
+      responses:
+        '200':
+          description: AI-generated reply suggestions
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/AIReplyResponse'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '503':
+          description: AI service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: 'AI_SERVICE_UNAVAILABLE'
+                message: 'AI service is temporarily unavailable. Please try again later.'
+
+  /ai/categorize:
+    post:
+      summary: AI-powered message categorization
+      description: Categorize message using AI into predefined or custom categories
+      tags: [AI Services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message_id:
+                  type: string
+                  format: uuid
+                learn_from_correction:
+                  type: boolean
+                  description: If true, AI will learn from manual category corrections
+                  default: false
+                corrected_category_id:
+                  type: string
+                  format: uuid
+                  description: Provide when user corrects AI categorization
+              required: [message_id]
+      responses:
+        '200':
+          description: Categorization result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+                    format: uuid
+                  suggested_category_id:
+                    type: string
+                    format: uuid
+                  confidence_score:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                  alternatives:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        category_id:
+                          type: string
+                          format: uuid
+                        confidence_score:
+                          type: number
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '503':
+          description: AI service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+
+  /ai/prioritize:
+    post:
+      summary: Calculate message priority score
+      description: Analyze message and assign priority score (0-100) using AI
+      tags: [AI Services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message_id:
+                  type: string
+                  format: uuid
+                factors:
+                  type: object
+                  description: Optional context to improve priority scoring
+                  properties:
+                    sender_importance:
+                      type: string
+                      enum: [vip, normal, low]
+                    has_urgent_keywords:
+                      type: boolean
+                    user_interaction_history:
+                      type: object
+              required: [message_id]
+      responses:
+        '200':
+          description: Priority score calculated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+                    format: uuid
+                  priority_score:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  priority_level:
+                    type: string
+                    enum: [high, medium, low]
+                  is_urgent:
+                    type: boolean
+                  reasoning:
+                    type: string
+                    description: Brief explanation of priority assignment
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '503':
+          description: AI service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'

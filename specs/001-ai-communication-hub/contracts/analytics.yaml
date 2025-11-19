@@ -1,0 +1,230 @@
+paths:
+  /analytics/summary:
+    get:
+      summary: Get analytics summary
+      description: Fetch aggregated communication statistics for specified time period
+      tags: [Analytics]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, custom]
+            default: week
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Required if period is 'custom'
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Required if period is 'custom'
+      responses:
+        '200':
+          description: Analytics summary
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/AnalyticsSummary'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /analytics/response-times:
+    get:
+      summary: Get response time metrics
+      description: Fetch average response times across platforms and contacts
+      tags: [Analytics]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, custom]
+            default: week
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [gmail, exchange, imap, facebook, instagram, whatsapp, outlook_calendar]
+          description: Filter by specific platform
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [platform, contact, day, hour]
+            default: platform
+      responses:
+        '200':
+          description: Response time metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  average_response_time_minutes:
+                    type: number
+                  breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        group_key:
+                          type: string
+                        average_response_time_minutes:
+                          type: number
+                        message_count:
+                          type: integer
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /analytics/platform-breakdown:
+    get:
+      summary: Get platform activity breakdown
+      description: Fetch message counts and activity by platform
+      tags: [Analytics]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, custom]
+            default: week
+      responses:
+        '200':
+          description: Platform breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  total_messages:
+                    type: integer
+                  platforms:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        platform:
+                          type: string
+                        message_count:
+                          type: integer
+                        percentage:
+                          type: number
+                        received_count:
+                          type: integer
+                        sent_count:
+                          type: integer
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /analytics/top-contacts:
+    get:
+      summary: Get top contacts
+      description: Fetch most frequent contacts with message counts
+      tags: [Analytics]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year]
+            default: month
+      responses:
+        '200':
+          description: Top contacts list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        contact_email:
+                          type: string
+                        contact_name:
+                          type: string
+                        message_count:
+                          type: integer
+                        last_interaction:
+                          type: string
+                          format: date-time
+                        platforms:
+                          type: array
+                          items:
+                            type: string
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /analytics/ai-performance:
+    get:
+      summary: Get AI service performance metrics
+      description: Fetch AI acceptance rates and categorization accuracy
+      tags: [Analytics]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, custom]
+            default: month
+      responses:
+        '200':
+          description: AI performance metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  reply_suggestions:
+                    type: object
+                    properties:
+                      total_generated:
+                        type: integer
+                      accepted_count:
+                        type: integer
+                      acceptance_rate:
+                        type: number
+                        description: Percentage of suggestions accepted
+                  categorization:
+                    type: object
+                    properties:
+                      total_categorized:
+                        type: integer
+                      user_corrections:
+                        type: integer
+                      accuracy_rate:
+                        type: number
+                        description: Percentage of correct categorizations
+                  priority_scoring:
+                    type: object
+                    properties:
+                      total_scored:
+                        type: integer
+                      user_agreement_rate:
+                        type: number
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'

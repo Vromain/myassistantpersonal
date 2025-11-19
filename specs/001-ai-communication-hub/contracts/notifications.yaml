@@ -1,0 +1,98 @@
+paths:
+  /notifications/preferences:
+    get:
+      summary: Get notification preferences
+      description: Fetch current user's notification settings including quiet hours and rules
+      tags: [Notifications]
+      responses:
+        '200':
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/UserPreferences'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+    put:
+      summary: Update notification preferences
+      description: Update quiet hours, notification rules, and priority thresholds
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/UserPreferences'
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/UserPreferences'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /notifications/register-device:
+    post:
+      summary: Register device for push notifications
+      description: Register FCM token for push notifications on mobile/web
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fcm_token:
+                  type: string
+                  description: Firebase Cloud Messaging device token
+                platform:
+                  type: string
+                  enum: [web, ios, android]
+                device_name:
+                  type: string
+                  description: Optional device identifier for user's reference
+              required: [fcm_token, platform]
+      responses:
+        '201':
+          description: Device registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                    format: uuid
+                  registered_at:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+    delete:
+      summary: Unregister device
+      description: Remove device registration and stop push notifications
+      tags: [Notifications]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fcm_token:
+                  type: string
+              required: [fcm_token]
+      responses:
+        '204':
+          description: Device unregistered successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'

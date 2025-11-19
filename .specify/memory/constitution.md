@@ -1,50 +1,156 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT
+==================
+Version: [TEMPLATE] → 1.0.0
+Change Type: MINOR (Initial constitution ratification)
+
+Sections Added:
+- Core Principles (5 principles defined)
+- Development Standards
+- Quality Gates
+- Governance
+
+Principles Defined:
+1. Simplicity First
+2. Test-Driven Development
+3. Documentation as Code
+4. Incremental Delivery
+5. Security by Default
+
+Templates Consistency:
+- ✅ plan-template.md - Constitution Check section references this file
+- ✅ spec-template.md - Requirements align with principles
+- ✅ tasks-template.md - Task structure supports TDD and incremental delivery
+
+Follow-up TODOs: None
+-->
+
+# MyAssistantPersonal Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Simplicity First
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Every solution MUST start with the simplest viable approach. Complexity requires explicit
+justification documented in plan.md. YAGNI (You Aren't Gonna Need It) is enforced—build only
+what is needed now, not what might be needed later.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: Simple code is easier to understand, test, maintain, and debug. Premature
+optimization and speculative features increase maintenance burden without delivering immediate
+value.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Test-Driven Development
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+All features MUST follow the red-green-refactor cycle:
+- Write failing tests first
+- Implement minimal code to pass tests
+- Refactor while keeping tests green
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Unit tests are REQUIRED for all business logic. Integration tests are REQUIRED for:
+- New API contracts
+- Cross-service communication
+- External dependencies
+- Data persistence layers
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+**Rationale**: TDD ensures code is testable by design, provides living documentation, and
+catches regressions early. Front-loading test design clarifies requirements before
+implementation begins.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### III. Documentation as Code
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Code MUST be self-documenting through clear naming and structure. Additional documentation is
+REQUIRED for:
+- Public APIs and contracts (in contracts/ directory)
+- Architecture decisions (in plan.md)
+- User-facing features (in quickstart.md)
+- Complex algorithms or business logic (inline comments)
+
+All documentation MUST be maintained alongside code changes—stale docs are worse than no docs.
+
+**Rationale**: Documentation enables onboarding, reduces knowledge silos, and prevents
+assumptions. Keeping docs near code reduces synchronization overhead.
+
+### IV. Incremental Delivery
+
+Features MUST be broken into independently testable user stories with assigned priorities
+(P1, P2, P3, etc.). Each story MUST be deliverable as a standalone increment that provides
+user value.
+
+Implementation MUST proceed in priority order (P1 → P2 → P3). Lower-priority stories can be
+deferred without blocking higher-priority work.
+
+**Rationale**: Incremental delivery enables early feedback, reduces risk, and allows pivoting
+based on user needs. Independent stories enable parallel development and flexible scope
+management.
+
+### V. Security by Default
+
+Security MUST be considered at design time, not retrofitted. All features MUST:
+- Validate and sanitize user input
+- Use parameterized queries for database access
+- Implement proper authentication and authorization
+- Log security-relevant events
+- Follow least-privilege principles
+
+OWASP Top 10 vulnerabilities MUST be addressed during code review.
+
+**Rationale**: Security vulnerabilities can have severe consequences. Fixing security issues
+after deployment is exponentially more expensive than preventing them during development.
+
+## Development Standards
+
+### Code Quality
+
+- All code MUST pass linting and formatting checks before commit
+- Code reviews are REQUIRED for all changes
+- Cyclomatic complexity MUST be kept low (< 10 per function as guideline)
+- No commented-out code in production branches
+- Magic numbers MUST be replaced with named constants
+
+### Dependency Management
+
+- Dependencies MUST be pinned to specific versions
+- New dependencies require justification in plan.md
+- Licenses MUST be compatible with project license
+- Security vulnerabilities in dependencies MUST be addressed within 7 days
+
+## Quality Gates
+
+Before merging to main branch:
+
+1. **All tests pass**: Unit, integration, and contract tests green
+2. **Code review approved**: At least one reviewer approval required
+3. **Documentation updated**: All affected docs synchronized with code changes
+4. **No security violations**: OWASP check passed, no known vulnerabilities
+5. **Constitution compliance**: All principles verified during review
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+### Amendment Process
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Constitution changes REQUIRE:
+1. Proposal documenting change rationale
+2. Review of impact on existing code and templates
+3. Update of all dependent templates (plan, spec, tasks)
+4. Version increment following semantic versioning
+5. Documentation of migration path for in-flight work
+
+### Versioning Policy
+
+Constitution follows semantic versioning (MAJOR.MINOR.PATCH):
+- **MAJOR**: Backward-incompatible governance changes (principle removal/redefinition)
+- **MINOR**: New principles or sections added
+- **PATCH**: Clarifications, wording improvements, non-semantic fixes
+
+### Compliance Review
+
+All pull requests MUST verify constitution compliance. Reviewers MUST check:
+- Simplicity justification if adding complexity
+- Tests written before implementation (TDD)
+- Documentation updates included
+- User story independence maintained
+- Security considerations addressed
+
+Violations MUST be resolved before merge—no exceptions without documented executive override.
+
+**Version**: 1.0.0 | **Ratified**: 2025-11-16 | **Last Amended**: 2025-11-16

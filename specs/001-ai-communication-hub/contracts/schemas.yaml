@@ -1,0 +1,332 @@
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        subscription_tier:
+          type: string
+          enum: [free, premium]
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+      required: [id, email, subscription_tier]
+
+    UserPreferences:
+      type: object
+      properties:
+        quiet_hours:
+          $ref: '#/components/schemas/QuietHours'
+        notification_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationRule'
+        data_retention_days:
+          type: integer
+          minimum: 30
+          maximum: 365
+          default: 90
+
+    QuietHours:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        start_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: '22:00'
+        end_time:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: '07:00'
+        timezone:
+          type: string
+          example: 'America/New_York'
+
+    NotificationRule:
+      type: object
+      properties:
+        priority_threshold:
+          type: string
+          enum: [high, medium, low]
+        enabled:
+          type: boolean
+        keywords:
+          type: array
+          items:
+            type: string
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        external_id:
+          type: string
+        platform:
+          type: string
+          enum: [gmail, exchange, imap, facebook, instagram, whatsapp, tiktok, outlook_calendar]
+        sender:
+          type: string
+        recipient:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        read_status:
+          type: boolean
+        priority_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        priority_level:
+          type: string
+          enum: [high, medium, low]
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        is_urgent:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [id, account_id, platform, sender, timestamp, priority_score]
+
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+        filename:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+        url:
+          type: string
+          format: uri
+
+    ConnectedAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        platform:
+          type: string
+          enum: [gmail, exchange, imap, facebook, instagram, whatsapp, outlook_calendar]
+        email:
+          type: string
+          format: email
+          nullable: true
+        display_name:
+          type: string
+        sync_status:
+          type: string
+          enum: [active, syncing, error, disconnected]
+        last_sync:
+          type: string
+          format: date-time
+          nullable: true
+        connection_health:
+          type: string
+          enum: [healthy, warning, error]
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+      required: [id, user_id, platform, sync_status, connection_health]
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 50
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        is_predefined:
+          type: boolean
+        auto_assignment_rules:
+          type: object
+          properties:
+            keywords:
+              type: array
+              items:
+                type: string
+            sender_patterns:
+              type: array
+              items:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+      required: [id, name, color]
+
+    AIReplyResponse:
+      type: object
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        suggestions:
+          type: array
+          items:
+            type: string
+          minItems: 3
+          maxItems: 5
+        model_version:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        period:
+          type: string
+          enum: [day, week, month, custom]
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        total_messages:
+          type: integer
+        unread_messages:
+          type: integer
+        average_response_time_minutes:
+          type: number
+        platform_breakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        category_breakdown:
+          type: object
+          additionalProperties:
+            type: integer
+        ai_acceptance_rate:
+          type: number
+          description: Percentage of AI suggestions accepted
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+      required: [code, message]
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'UNAUTHORIZED'
+            message: 'Authentication required'
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'FORBIDDEN'
+            message: 'Insufficient permissions to access this resource'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'NOT_FOUND'
+            message: 'Resource not found'
+
+    BadRequest:
+      description: Bad request - Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'BAD_REQUEST'
+            message: 'Invalid request parameters'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'INTERNAL_ERROR'
+            message: 'An unexpected error occurred'
+
+    RateLimitExceeded:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 'RATE_LIMIT_EXCEEDED'
+            message: 'Too many requests. Please try again later'
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per hour
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when rate limit resets

@@ -1,0 +1,439 @@
+openapi: 3.0.3
+info:
+  title: Authentication API
+  version: 1.0.0
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create a new user account with email and password
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/RegisterRequest'
+            example:
+              email: "newuser@example.com"
+              password: "SecurePass123!"
+              displayName: "Jane Doe"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/LoginResponse'
+        '400':
+          description: Bad request - validation errors
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                emailExists:
+                  value:
+                    code: "EMAIL_EXISTS"
+                    message: "An account with this email already exists"
+                weakPassword:
+                  value:
+                    code: "WEAK_PASSWORD"
+                    message: "Password must be at least 8 characters long"
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user with email and password
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/LoginRequest'
+            example:
+              email: "user@example.com"
+              password: "SecurePass123!"
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: Request limit per window
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: Remaining requests in current window
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/LoginResponse'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "INVALID_CREDENTIALS"
+                message: "Invalid email or password"
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Invalidate the current access token
+      operationId: logout
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Get a new access token using a valid refresh token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/RefreshTokenRequest'
+            example:
+              refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - accessToken
+                  - tokenType
+                  - expiresIn
+                properties:
+                  accessToken:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  tokenType:
+                    type: string
+                    default: Bearer
+                    example: "Bearer"
+                  expiresIn:
+                    type: integer
+                    description: Access token expiration time in seconds
+                    example: 3600
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "INVALID_REFRESH_TOKEN"
+                message: "Invalid or expired refresh token"
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/oauth/{provider}/authorize:
+    get:
+      tags:
+        - Authentication
+      summary: OAuth authorization URL
+      description: |
+        Get the OAuth authorization URL for a specific provider (Google, Apple, Facebook).
+        Redirect the user to this URL to initiate OAuth flow.
+      operationId: getOAuthAuthorizationUrl
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: OAuth provider
+          schema:
+            type: string
+            enum: [google, apple, facebook]
+        - name: redirectUri
+          in: query
+          required: true
+          description: URI to redirect to after authorization
+          schema:
+            type: string
+            format: uri
+          example: "https://app.commhub.example.com/auth/callback"
+        - name: state
+          in: query
+          required: false
+          description: State parameter for CSRF protection
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Authorization URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - authorizationUrl
+                properties:
+                  authorizationUrl:
+                    type: string
+                    format: uri
+                    description: URL to redirect user to for OAuth authorization
+                    example: "https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...&scope=..."
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/oauth/{provider}/callback:
+    post:
+      tags:
+        - Authentication
+      summary: OAuth callback
+      description: |
+        Handle OAuth callback after user authorizes.
+        Exchange authorization code for access token and create/login user.
+      operationId: handleOAuthCallback
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          description: OAuth provider
+          schema:
+            type: string
+            enum: [google, apple, facebook]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Authorization code from OAuth provider
+                  example: "4/0AX4XfWh..."
+                state:
+                  type: string
+                  description: State parameter for CSRF protection
+                  example: "random_state_string"
+            example:
+              code: "4/0AX4XfWh..."
+              state: "random_state_string"
+      responses:
+        '200':
+          description: OAuth authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid authorization code or state mismatch
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                invalidCode:
+                  value:
+                    code: "INVALID_AUTH_CODE"
+                    message: "Invalid authorization code"
+                stateMismatch:
+                  value:
+                    code: "STATE_MISMATCH"
+                    message: "State parameter mismatch - possible CSRF attack"
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/password/reset-request:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      description: Send password reset email to user
+      operationId: requestPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+            example:
+              email: "user@example.com"
+      responses:
+        '202':
+          description: Password reset email sent (if account exists)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "If an account with that email exists, a password reset link has been sent"
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '429':
+          description: Too many reset requests
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "TOO_MANY_REQUESTS"
+                message: "Too many password reset requests. Please try again in 15 minutes."
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/password/reset:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      description: Reset user password using reset token from email
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                  description: Password reset token from email
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: New password
+            example:
+              token: "reset_token_from_email"
+              newPassword: "NewSecurePass123!"
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Password reset successful. You can now login with your new password."
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              examples:
+                invalidToken:
+                  value:
+                    code: "INVALID_RESET_TOKEN"
+                    message: "Invalid or expired password reset token"
+                weakPassword:
+                  value:
+                    code: "WEAK_PASSWORD"
+                    message: "Password must be at least 8 characters long"
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /auth/verify-email:
+    post:
+      tags:
+        - Authentication
+      summary: Verify email address
+      description: Verify user's email address using verification token
+      operationId: verifyEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Email verification token
+            example:
+              token: "email_verify_token_123"
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Email verified successfully"
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "INVALID_VERIFY_TOKEN"
+                message: "Invalid or expired email verification token"
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

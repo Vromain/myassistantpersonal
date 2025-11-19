@@ -1,0 +1,298 @@
+paths:
+  /messages:
+    get:
+      summary: Get messages list
+      description: Fetch messages with filtering, sorting, and pagination
+      tags: [Messages]
+      parameters:
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [gmail, exchange, imap, facebook, instagram, whatsapp, outlook_calendar]
+        - name: category_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [high, medium, low]
+        - name: read_status
+          in: query
+          schema:
+            type: boolean
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [timestamp, priority_score]
+            default: priority_score
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Message'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+
+  /messages/{messageId}:
+    get:
+      summary: Get message details
+      description: Fetch full message content including attachments
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message details
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Message'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+
+    delete:
+      summary: Delete message
+      description: Delete message from unified inbox (may or may not delete from original platform depending on platform support)
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Message deleted successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+
+  /messages/{messageId}/read:
+    put:
+      summary: Mark message as read/unread
+      description: Update read status and sync with original platform
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                read_status:
+                  type: boolean
+              required: [read_status]
+      responses:
+        '200':
+          description: Read status updated
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Message'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+
+  /messages/{messageId}/archive:
+    post:
+      summary: Archive message
+      description: Move message to archive (keeps in database but hides from inbox)
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Message archived successfully
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+
+  /messages/search:
+    get:
+      summary: Search messages
+      description: Full-text search across all messages with advanced filters
+      tags: [Messages]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: platform
+          in: query
+          schema:
+            type: string
+            enum: [gmail, exchange, imap, facebook, instagram, whatsapp, outlook_calendar]
+        - name: sender
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: has_attachments
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/Message'
+                  total:
+                    type: integer
+                  query:
+                    type: string
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /messages/{messageId}/reply:
+    post:
+      summary: Send reply to message
+      description: Send reply through original platform
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                attachments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      filename:
+                        type: string
+                      content_base64:
+                        type: string
+                        description: Base64 encoded file content
+                      mime_type:
+                        type: string
+              required: [content]
+      responses:
+        '201':
+          description: Reply sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Message'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'

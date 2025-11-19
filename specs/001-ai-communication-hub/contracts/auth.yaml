@@ -1,0 +1,85 @@
+paths:
+  /auth/{platform}/authorize:
+    get:
+      summary: Initiate OAuth2 authorization flow
+      description: Redirects user to platform's OAuth2 authorization page
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [gmail, exchange, facebook, instagram, whatsapp, outlook]
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+      responses:
+        '302':
+          description: Redirect to platform OAuth2 page
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+
+  /auth/{platform}/callback:
+    get:
+      summary: OAuth2 callback handler
+      description: Handles OAuth2 authorization code and exchanges for access token
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [gmail, exchange, facebook, instagram, whatsapp, outlook]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Authorization code from OAuth2 provider
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: CSRF protection state parameter
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT access token for API requests
+                  refresh_token:
+                    type: string
+                    description: Token to refresh access token
+                  expires_in:
+                    type: integer
+                    description: Token expiration time in seconds
+                  account:
+                    $ref: './schemas.yaml#/components/schemas/ConnectedAccount'
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: Logout user
+      description: Invalidates user's JWT token
+      tags: [Authentication]
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'

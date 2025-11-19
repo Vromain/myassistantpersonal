@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: AI-Powered Communication Hub API
+  version: 1.0.0
+  description: |
+    RESTful API for managing unified communications across email, social media, and messaging platforms.
+    Features AI-powered message prioritization, smart replies, and automated management.
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Authentication
+    description: OAuth2 and user authentication
+  - name: Messages
+    description: Message management and synchronization
+  - name: Accounts
+    description: Connected platform accounts
+  - name: Categories
+    description: Message categorization
+  - name: AI Services
+    description: AI-powered features
+  - name: Notifications
+    description: Notification preferences and delivery
+  - name: Analytics
+    description: Communication analytics
+  - name: Users
+    description: User profile and preferences
+
+paths:
+  # Authentication
+  /auth/{platform}/authorize:
+    $ref: './auth.yaml#/paths/~1auth~1{platform}~1authorize'
+
+  /auth/{platform}/callback:
+    $ref: './auth.yaml#/paths/~1auth~1{platform}~1callback'
+
+  /auth/logout:
+    $ref: './auth.yaml#/paths/~1auth~1logout'
+
+  # Messages
+  /messages:
+    $ref: './messages.yaml#/paths/~1messages'
+
+  /messages/{messageId}:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}'
+
+  /messages/{messageId}/read:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1read'
+
+  /messages/{messageId}/archive:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1archive'
+
+  /messages/search:
+    $ref: './messages.yaml#/paths/~1messages~1search'
+
+  /messages/{messageId}/reply:
+    $ref: './messages.yaml#/paths/~1messages~1{messageId}~1reply'
+
+  # Connected Accounts
+  /accounts:
+    $ref: './accounts.yaml#/paths/~1accounts'
+
+  /accounts/{accountId}:
+    $ref: './accounts.yaml#/paths/~1accounts~1{accountId}'
+
+  /accounts/{accountId}/sync:
+    $ref: './accounts.yaml#/paths/~1accounts~1{accountId}~1sync'
+
+  # Categories
+  /categories:
+    $ref: './categories.yaml#/paths/~1categories'
+
+  /categories/{categoryId}:
+    $ref: './categories.yaml#/paths/~1categories~1{categoryId}'
+
+  # AI Services
+  /ai/replies:
+    $ref: './ai.yaml#/paths/~1ai~1replies'
+
+  /ai/categorize:
+    $ref: './ai.yaml#/paths/~1ai~1categorize'
+
+  /ai/prioritize:
+    $ref: './ai.yaml#/paths/~1ai~1prioritize'
+
+  # Notifications
+  /notifications/preferences:
+    $ref: './notifications.yaml#/paths/~1notifications~1preferences'
+
+  /notifications/register-device:
+    $ref: './notifications.yaml#/paths/~1notifications~1register-device'
+
+  # Analytics
+  /analytics/summary:
+    $ref: './analytics.yaml#/paths/~1analytics~1summary'
+
+  /analytics/response-times:
+    $ref: './analytics.yaml#/paths/~1analytics~1response-times'
+
+  /analytics/platform-breakdown:
+    $ref: './analytics.yaml#/paths/~1analytics~1platform-breakdown'
+
+  # Users
+  /users/me:
+    get:
+      summary: Get current user profile
+      tags: [Users]
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/User'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained after OAuth2 authentication

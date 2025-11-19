@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: AI Services API
+  version: 1.0.0
+
+paths:
+  /ai/reply-suggestions:
+    post:
+      tags:
+        - AI Services
+      summary: Generate reply suggestions
+      description: |
+        Generate 3-5 contextual reply suggestions for a message using AI (FR-010).
+        AI analyzes message content, conversation history, and user communication patterns.
+        Response time target: <3 seconds.
+      operationId: generateReplySuggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/AIReplySuggestionRequest'
+            example:
+              messageId: "770e8400-e29b-41d4-a716-446655440002"
+              count: 3
+              tone: "professional"
+      responses:
+        '200':
+          description: Reply suggestions generated successfully
+          headers:
+            X-AI-Response-Time-Ms:
+              schema:
+                type: integer
+              description: AI processing time in milliseconds
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - messageId
+                  - suggestions
+                  - generatedAt
+                properties:
+                  messageId:
+                    type: string
+                    format: uuid
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/AIReplySuggestion'
+                    minItems: 3
+                    maxItems: 5
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  processingTimeMs:
+                    type: integer
+                    description: Time taken to generate suggestions
+              example:
+                messageId: "770e8400-e29b-41d4-a716-446655440002"
+                suggestions:
+                  - id: "sugg_1"
+                    content: "Thanks for the update. I'll review the budget proposal and get back to you by end of day."
+                    confidence: 0.92
+                    tone: "professional"
+                  - id: "sugg_2"
+                    content: "Appreciate the heads up. Let me know if you need any additional information from my side."
+                    confidence: 0.88
+                    tone: "professional"
+                  - id: "sugg_3"
+                    content: "Got it, thanks! I'll take a look and follow up with any questions."
+                    confidence: 0.85
+                    tone: "friendly"
+                generatedAt: "2025-11-16T15:30:00Z"
+                processingTimeMs: 2150
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          description: Message not found
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "MESSAGE_NOT_FOUND"
+                message: "The specified message was not found"
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+        '503':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "AI_SERVICE_UNAVAILABLE"
+                message: "AI reply generation service is temporarily unavailable. Please try again later."
+
+  /ai/categorize:
+    post:
+      tags:
+        - AI Services
+      summary: Categorize message
+      description: |
+        Automatically categorize a message into one of the predefined or custom categories using AI (FR-012).
+        AI learns from user corrections to improve accuracy over time (FR-014).
+        Target accuracy: 80% (SC-003).
+      operationId: categorizeMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/AICategorizeRequest'
+            example:
+              messageId: "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Message categorized successfully
+          headers:
+            X-AI-Response-Time-Ms:
+              schema:
+                type: integer
+              description: AI processing time in milliseconds
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './schemas.yaml#/components/schemas/AICategorizeResponse'
+                  - type: object
+                    properties:
+                      alternativeCategories:
+                        type: array
+                        description: Alternative category suggestions with lower confidence
+                        items:
+                          type: object
+                          properties:
+                            categoryId:
+                              type: string
+                              format: uuid
+                            categoryName:
+                              type: string
+                            confidence:
+                              type: number
+                              format: float
+                      processingTimeMs:
+                        type: integer
+              example:
+                categoryId: "880e8400-e29b-41d4-a716-446655440001"
+                categoryName: "Work"
+                confidence: 0.88
+                alternativeCategories:
+                  - categoryId: "880e8400-e29b-41d4-a716-446655440002"
+                    categoryName: "Personal"
+                    confidence: 0.35
+                processingTimeMs: 980
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+        '503':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+              example:
+                code: "AI_SERVICE_UNAVAILABLE"
+                message: "AI categorization service is temporarily unavailable"
+
+  /ai/categorize/bulk:
+    post:
+      tags:
+        - AI Services
+      summary: Bulk categorize messages
+      description: Categorize multiple messages in a single request
+      operationId: bulkCategorizeMessages
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - messageIds
+              properties:
+                messageIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  minItems: 1
+                  maxItems: 50
+                  description: Array of message IDs to categorize
+            example:
+              messageIds:
+                - "770e8400-e29b-41d4-a716-446655440002"
+                - "770e8400-e29b-41d4-a716-446655440003"
+                - "770e8400-e29b-41d4-a716-446655440004"
+      responses:
+        '200':
+          description: Messages categorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        messageId:
+                          type: string
+                          format: uuid
+                        categoryId:
+                          type: string
+                          format: uuid
+                        categoryName:
+                          type: string
+                        confidence:
+                          type: number
+                          format: float
+                  processingTimeMs:
+                    type: integer
+              example:
+                results:
+                  - messageId: "770e8400-e29b-41d4-a716-446655440002"
+                    categoryId: "880e8400-e29b-41d4-a716-446655440001"
+                    categoryName: "Work"
+                    confidence: 0.88
+                  - messageId: "770e8400-e29b-41d4-a716-446655440003"
+                    categoryId: "880e8400-e29b-41d4-a716-446655440003"
+                    categoryName: "Shopping"
+                    confidence: 0.92
+                processingTimeMs: 1850
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /ai/priority-score:
+    post:
+      tags:
+        - AI Services
+      summary: Calculate priority score
+      description: |
+        Calculate AI-based priority score (0-100) for a message (FR-006).
+        AI analyzes content, sender importance, keywords, and user interaction history.
+        Higher scores indicate more important messages.
+      operationId: calculatePriorityScore
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/AIPriorityScoreRequest'
+            example:
+              messageId: "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Priority score calculated
+          headers:
+            X-AI-Response-Time-Ms:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './schemas.yaml#/components/schemas/AIPriorityScoreResponse'
+                  - type: object
+                    properties:
+                      processingTimeMs:
+                        type: integer
+              example:
+                priorityScore: 85
+                priorityLevel: "high"
+                confidence: 0.91
+                reasons:
+                  - "Urgent keyword detected in subject"
+                  - "Sender is in high-priority contacts list"
+                  - "Time-sensitive content identified"
+                  - "Message requires response"
+                processingTimeMs: 1250
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+        '503':
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/Error'
+
+  /ai/feedback:
+    post:
+      tags:
+        - AI Services
+      summary: Submit AI feedback
+      description: |
+        Provide feedback on AI predictions to improve future accuracy (FR-014).
+        The system learns from user corrections and adjusts models accordingly.
+        Target improvement: 10% accuracy gain after 100 corrections (SC-012).
+      operationId: submitAIFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas.yaml#/components/schemas/AIFeedback'
+            examples:
+              categorizationCorrection:
+                summary: Categorization correction
+                value:
+                  feedbackType: "categorization"
+                  messageId: "770e8400-e29b-41d4-a716-446655440002"
+                  wasCorrect: false
+                  correctValue: "880e8400-e29b-41d4-a716-446655440010"
+              priorityCorrection:
+                summary: Priority correction
+                value:
+                  feedbackType: "priority"
+                  messageId: "770e8400-e29b-41d4-a716-446655440002"
+                  wasCorrect: false
+                  correctValue: "medium"
+              replyAccepted:
+                summary: Reply suggestion accepted
+                value:
+                  feedbackType: "reply"
+                  messageId: "770e8400-e29b-41d4-a716-446655440002"
+                  wasCorrect: true
+      responses:
+        '201':
+          description: Feedback recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  feedbackId:
+                    type: string
+                    format: uuid
+                    description: Unique feedback record ID
+                  message:
+                    type: string
+                    example: "Thank you for your feedback. This will help improve AI accuracy."
+                  modelUpdated:
+                    type: boolean
+                    description: Whether the AI model was immediately updated
+                    example: true
+              example:
+                feedbackId: "fb0e8400-e29b-41d4-a716-446655440020"
+                message: "Thank you for your feedback. This will help improve AI accuracy."
+                modelUpdated: true
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /ai/models:
+    get:
+      tags:
+        - AI Services
+      summary: Get AI model information
+      description: Get information about active AI models and their performance metrics
+      operationId: getAIModels
+      responses:
+        '200':
+          description: AI model information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        modelType:
+                          type: string
+                          enum: [priority, reply, categorization, spam]
+                        name:
+                          type: string
+                        version:
+                          type: string
+                        provider:
+                          type: string
+                        isActive:
+                          type: boolean
+                        performance:
+                          type: object
+                          properties:
+                            accuracy:
+                              type: number
+                              format: float
+                            totalPredictions:
+                              type: integer
+                            userCorrections:
+                              type: integer
+                            avgResponseTimeMs:
+                              type: integer
+                            lastEvaluatedAt:
+                              type: string
+                              format: date-time
+              example:
+                models:
+                  - modelType: "priority"
+                    name: "llama2:7b"
+                    version: "1.0"
+                    provider: "ollama"
+                    isActive: true
+                    performance:
+                      accuracy: 0.83
+                      totalPredictions: 15420
+                      userCorrections: 2180
+                      avgResponseTimeMs: 1250
+                      lastEvaluatedAt: "2025-11-16T10:00:00Z"
+                  - modelType: "categorization"
+                    name: "mistral:7b"
+                    version: "1.0"
+                    provider: "ollama"
+                    isActive: true
+                    performance:
+                      accuracy: 0.78
+                      totalPredictions: 12500
+                      userCorrections: 1500
+                      avgResponseTimeMs: 980
+                  - modelType: "reply"
+                    name: "llama2:7b"
+                    version: "1.0"
+                    provider: "ollama"
+                    isActive: true
+                    performance:
+                      accuracy: 0.42
+                      totalPredictions: 8900
+                      avgResponseTimeMs: 2100
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /ai/smart-compose:
+    post:
+      tags:
+        - AI Services
+      summary: Smart compose (autocomplete)
+      description: |
+        Get AI-powered text completion suggestions while composing a message.
+        Similar to Gmail's Smart Compose feature.
+      operationId: smartCompose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - partialText
+              properties:
+                partialText:
+                  type: string
+                  description: Partially written message text
+                  minLength: 5
+                  example: "Thanks for reaching out. I'll"
+                replyToMessageId:
+                  type: string
+                  format: uuid
+                  description: Message ID if this is a reply
+                  nullable: true
+                maxSuggestions:
+                  type: integer
+                  minimum: 1
+                  maximum: 3
+                  default: 1
+      responses:
+        '200':
+          description: Completion suggestions generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        text:
+                          type: string
+                          description: Suggested completion text
+                        confidence:
+                          type: number
+                          format: float
+                  processingTimeMs:
+                    type: integer
+              example:
+                suggestions:
+                  - text: " review this and get back to you by end of day."
+                    confidence: 0.89
+                  - text: " take a look at the document you shared."
+                    confidence: 0.76
+                processingTimeMs: 850
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /ai/spam-detection:
+    post:
+      tags:
+        - AI Services
+      summary: Detect spam
+      description: Analyze a message to determine if it's spam or unwanted content
+      operationId: detectSpam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - messageId
+              properties:
+                messageId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Spam detection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isSpam:
+                    type: boolean
+                    description: Whether message is classified as spam
+                  confidence:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 1
+                  reasons:
+                    type: array
+                    items:
+                      type: string
+                    description: Reasons for spam classification
+                  processingTimeMs:
+                    type: integer
+              example:
+                isSpam: true
+                confidence: 0.94
+                reasons:
+                  - "Suspicious sender domain"
+                  - "Contains common spam keywords"
+                  - "Multiple external links"
+                processingTimeMs: 650
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '404':
+          $ref: './schemas.yaml#/components/responses/NotFound'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

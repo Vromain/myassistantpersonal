@@ -1,0 +1,1082 @@
+openapi: 3.0.3
+info:
+  title: Schemas
+  version: 1.0.0
+
+components:
+  schemas:
+    # User schemas
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - authProvider
+        - subscriptionTier
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        authProvider:
+          type: string
+          description: Authentication provider
+          enum: [email, google, apple, facebook]
+          example: "google"
+        externalId:
+          type: string
+          description: External ID from auth provider
+          nullable: true
+          example: "google_123456789"
+        displayName:
+          type: string
+          description: User's display name
+          nullable: true
+          example: "John Doe"
+        avatarUrl:
+          type: string
+          format: uri
+          description: URL to user's profile picture
+          nullable: true
+          example: "https://cdn.example.com/avatars/user123.jpg"
+        subscriptionTier:
+          type: string
+          enum: [free, premium]
+          description: User's subscription level
+          default: free
+          example: "free"
+        maxConnectedAccounts:
+          type: integer
+          description: Maximum allowed connected accounts (5 for free, 10 for premium)
+          minimum: 5
+          maximum: 10
+          default: 5
+          example: 5
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+        dataRetentionDays:
+          type: integer
+          enum: [30, 90, 180, 365]
+          description: Message retention period in days (FR-029)
+          default: 90
+          example: 90
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: "2025-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: "2025-11-16T14:22:00Z"
+        lastLoginAt:
+          type: string
+          format: date-time
+          description: Last login timestamp
+          nullable: true
+          example: "2025-11-16T08:15:00Z"
+        isActive:
+          type: boolean
+          description: Account active status
+          default: true
+          example: true
+
+    UserPreferences:
+      type: object
+      properties:
+        notifications:
+          $ref: '#/components/schemas/NotificationPreferences'
+        ui:
+          $ref: '#/components/schemas/UIPreferences'
+        language:
+          type: string
+          description: Preferred language (ISO 639-1)
+          default: en
+          example: "en"
+
+    NotificationPreferences:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: Global notification toggle (FR-016)
+          default: true
+          example: true
+        quietHours:
+          $ref: '#/components/schemas/QuietHours'
+        priorityThreshold:
+          type: string
+          enum: [low, medium, high]
+          description: Minimum priority level for notifications (FR-017)
+          default: medium
+          example: "medium"
+        batchNotifications:
+          type: boolean
+          description: Enable notification batching (FR-018)
+          default: true
+          example: true
+        batchIntervalMinutes:
+          type: integer
+          description: Batching interval in minutes
+          minimum: 5
+          maximum: 60
+          default: 10
+          example: 10
+
+    QuietHours:
+      type: object
+      description: Quiet hours configuration (FR-016)
+      properties:
+        enabled:
+          type: boolean
+          default: true
+          example: true
+        start:
+          type: string
+          pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]$'
+          description: Start time (24-hour format HH:MM)
+          example: "22:00"
+        end:
+          type: string
+          pattern: '^([0-1][0-9]|2[0-3]):[0-5][0-9]$'
+          description: End time (24-hour format HH:MM)
+          example: "07:00"
+
+    UIPreferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, auto]
+          default: light
+          example: "light"
+        defaultView:
+          type: string
+          enum: [priority, chronological, unread]
+          description: Default inbox view
+          default: priority
+          example: "priority"
+        messagesPerPage:
+          type: integer
+          minimum: 10
+          maximum: 100
+          default: 50
+          example: 50
+
+    UserPreferencesUpdate:
+      type: object
+      properties:
+        displayName:
+          type: string
+          maxLength: 255
+        avatarUrl:
+          type: string
+          format: uri
+        preferences:
+          $ref: '#/components/schemas/UserPreferences'
+        dataRetentionDays:
+          type: integer
+          enum: [30, 90, 180, 365]
+
+    # Connected Account schemas
+    ConnectedAccount:
+      type: object
+      required:
+        - id
+        - userId
+        - platform
+        - accountIdentifier
+        - connectionStatus
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "660e8400-e29b-41d4-a716-446655440001"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        platform:
+          type: string
+          enum: [gmail, outlook, exchange, imap, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+          description: Platform type (FR-001, FR-002, FR-003)
+          example: "gmail"
+        accountIdentifier:
+          type: string
+          description: Platform-specific account ID or email
+          example: "user@gmail.com"
+        displayName:
+          type: string
+          description: Friendly name for the account
+          nullable: true
+          example: "Work Email"
+        connectionStatus:
+          type: string
+          enum: [active, expired, error, disconnected]
+          description: Connection health status
+          default: active
+          example: "active"
+        lastSyncAt:
+          type: string
+          format: date-time
+          description: Last successful synchronization timestamp (FR-004)
+          nullable: true
+          example: "2025-11-16T14:20:00Z"
+        lastSyncStatus:
+          type: string
+          enum: [success, error, pending]
+          default: pending
+          example: "success"
+        syncErrorMessage:
+          type: string
+          description: Error message from last failed sync
+          nullable: true
+          example: "Token expired"
+        isActive:
+          type: boolean
+          description: Whether account is active for syncing
+          default: true
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-20T09:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-11-16T14:20:00Z"
+
+    ConnectedAccountCreate:
+      type: object
+      required:
+        - platform
+        - oauthCode
+      properties:
+        platform:
+          type: string
+          enum: [gmail, outlook, exchange, imap, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+        oauthCode:
+          type: string
+          description: OAuth authorization code
+        displayName:
+          type: string
+          description: Custom name for the account
+
+    # Message schemas
+    Message:
+      type: object
+      required:
+        - id
+        - connectedAccountId
+        - externalId
+        - senderName
+        - senderIdentifier
+        - contentText
+        - preview
+        - messageTimestamp
+        - receivedAt
+        - platform
+        - priorityScore
+        - priorityLevel
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+        connectedAccountId:
+          type: string
+          format: uuid
+          example: "660e8400-e29b-41d4-a716-446655440001"
+        externalId:
+          type: string
+          description: Platform-specific message ID
+          example: "msg_abc123xyz"
+        threadId:
+          type: string
+          description: Platform-specific thread/conversation ID
+          nullable: true
+          example: "thread_def456"
+        senderName:
+          type: string
+          description: Sender's display name
+          example: "Alice Smith"
+        senderIdentifier:
+          type: string
+          description: Sender's email/username/phone
+          example: "alice.smith@company.com"
+        recipientNames:
+          type: array
+          items:
+            type: string
+          description: Array of recipient names
+          default: []
+          example: ["John Doe", "Bob Johnson"]
+        recipientIdentifiers:
+          type: array
+          items:
+            type: string
+          description: Array of recipient emails/usernames
+          default: []
+          example: ["john@example.com", "bob@example.com"]
+        subject:
+          type: string
+          description: Message subject (email) or conversation title
+          nullable: true
+          example: "Q4 Budget Review Meeting"
+        contentText:
+          type: string
+          description: Plain text message content (FR-007)
+          example: "Hi team, let's schedule our Q4 budget review meeting..."
+        contentHtml:
+          type: string
+          description: HTML message content (if available)
+          nullable: true
+          example: "<p>Hi team,</p><p>Let's schedule our Q4 budget review meeting...</p>"
+        preview:
+          type: string
+          description: Short preview text for UI display
+          maxLength: 500
+          example: "Hi team, let's schedule our Q4 budget review meeting..."
+        messageTimestamp:
+          type: string
+          format: date-time
+          description: When message was sent (platform timestamp)
+          example: "2025-11-16T13:45:00Z"
+        receivedAt:
+          type: string
+          format: date-time
+          description: When message was received by our system
+          example: "2025-11-16T13:45:23Z"
+        platform:
+          type: string
+          enum: [gmail, outlook, exchange, imap, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+          example: "gmail"
+        readStatus:
+          type: boolean
+          description: Whether user has read the message (FR-009)
+          default: false
+          example: false
+        priorityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: AI-assigned priority score (FR-006)
+          default: 50
+          example: 85
+        priorityLevel:
+          type: string
+          enum: [low, medium, high]
+          description: Priority category
+          default: medium
+          example: "high"
+        categoryId:
+          type: string
+          format: uuid
+          description: Assigned category ID (FR-012)
+          nullable: true
+          example: "880e8400-e29b-41d4-a716-446655440003"
+        isUrgent:
+          type: boolean
+          description: Flagged as urgent by keywords or sender (FR-028)
+          default: false
+          example: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageAttachment'
+          default: []
+        archivedAt:
+          type: string
+          format: date-time
+          description: When message was archived (FR-026)
+          nullable: true
+          example: null
+        deletedAt:
+          type: string
+          format: date-time
+          description: Soft delete timestamp
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-11-16T13:45:23Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-11-16T13:45:23Z"
+
+    MessageAttachment:
+      type: object
+      required:
+        - id
+        - filename
+        - mimeType
+        - sizeBytes
+      properties:
+        id:
+          type: string
+          description: Attachment identifier
+          example: "att_xyz789"
+        filename:
+          type: string
+          description: Original filename
+          example: "budget_report_q4.pdf"
+        mimeType:
+          type: string
+          description: MIME type
+          example: "application/pdf"
+        sizeBytes:
+          type: integer
+          description: File size in bytes
+          example: 1048576
+        url:
+          type: string
+          format: uri
+          description: Download URL (FR-027)
+          nullable: true
+          example: "https://cdn.example.com/attachments/att_xyz789"
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Thumbnail URL for images
+          nullable: true
+          example: "https://cdn.example.com/thumbnails/att_xyz789"
+
+    MessageReply:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Reply message content (FR-008)
+          minLength: 1
+          example: "Thanks for the update. I'll review and get back to you by EOD."
+        contentHtml:
+          type: string
+          description: HTML formatted reply content
+          nullable: true
+        attachments:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: File attachments (FR-027)
+
+    # Category schemas
+    Category:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - color
+        - isPredefined
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+        userId:
+          type: string
+          format: uuid
+          description: User ID (null for predefined categories)
+          nullable: true
+          example: null
+        name:
+          type: string
+          description: Category name (FR-012, FR-013)
+          maxLength: 100
+          example: "Work"
+        slug:
+          type: string
+          description: URL-friendly identifier
+          pattern: '^[a-z0-9-]+$'
+          example: "work"
+        color:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+          description: Hex color code
+          default: "#6B7280"
+          example: "#3B82F6"
+        icon:
+          type: string
+          description: Icon identifier
+          nullable: true
+          example: "briefcase"
+        isPredefined:
+          type: boolean
+          description: System predefined category (cannot be deleted)
+          default: false
+          example: true
+        autoAssignmentEnabled:
+          type: boolean
+          description: Whether AI should auto-assign this category (FR-012)
+          default: false
+          example: true
+        autoAssignmentRules:
+          $ref: '#/components/schemas/AutoAssignmentRules'
+        description:
+          type: string
+          description: User-facing category description
+          nullable: true
+          example: "Professional communications and work-related messages"
+        sortOrder:
+          type: integer
+          description: Display order in UI
+          default: 0
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-15T10:00:00Z"
+        isActive:
+          type: boolean
+          default: true
+          example: true
+
+    AutoAssignmentRules:
+      type: object
+      properties:
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Keywords to match
+          default: []
+          example: ["invoice", "receipt", "order"]
+        senderPatterns:
+          type: array
+          items:
+            type: string
+          description: Sender email/username patterns
+          default: []
+          example: ["*@company.com", "noreply@*"]
+        subjectPatterns:
+          type: array
+          items:
+            type: string
+          description: Subject line patterns
+          default: []
+          example: ["Order #*", "Invoice*"]
+        minConfidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Minimum confidence threshold for auto-assignment (FR-014)
+          default: 0.7
+          example: 0.7
+
+    CategoryCreate:
+      type: object
+      required:
+        - name
+        - slug
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+        color:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+        icon:
+          type: string
+        description:
+          type: string
+        autoAssignmentEnabled:
+          type: boolean
+        autoAssignmentRules:
+          $ref: '#/components/schemas/AutoAssignmentRules'
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          pattern: '^#[0-9A-F]{6}$'
+        icon:
+          type: string
+        description:
+          type: string
+        autoAssignmentEnabled:
+          type: boolean
+        autoAssignmentRules:
+          $ref: '#/components/schemas/AutoAssignmentRules'
+        sortOrder:
+          type: integer
+
+    # AI Service schemas
+    AIReplySuggestion:
+      type: object
+      required:
+        - id
+        - content
+        - confidence
+        - tone
+      properties:
+        id:
+          type: string
+          description: Suggestion identifier
+          example: "sugg_1"
+        content:
+          type: string
+          description: Suggested reply text (FR-010)
+          example: "Thanks for reaching out! I'll get back to you by end of day."
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: AI confidence score
+          example: 0.92
+        tone:
+          type: string
+          enum: [formal, casual, friendly, professional]
+          description: Detected tone of the suggestion
+          example: "professional"
+
+    AIReplySuggestionRequest:
+      type: object
+      required:
+        - messageId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Message to generate replies for
+        count:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 3
+          description: Number of suggestions to generate (FR-010)
+        tone:
+          type: string
+          enum: [formal, casual, friendly, professional, auto]
+          default: auto
+          description: Preferred tone for suggestions
+
+    AICategorizeRequest:
+      type: object
+      required:
+        - messageId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Message to categorize
+
+    AICategorizeResponse:
+      type: object
+      required:
+        - categoryId
+        - categoryName
+        - confidence
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+        categoryName:
+          type: string
+          example: "Work"
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: AI confidence in categorization (FR-012)
+          example: 0.88
+
+    AIPriorityScoreRequest:
+      type: object
+      required:
+        - messageId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+
+    AIPriorityScoreResponse:
+      type: object
+      required:
+        - priorityScore
+        - priorityLevel
+        - confidence
+      properties:
+        priorityScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Calculated priority score (FR-006)
+          example: 85
+        priorityLevel:
+          type: string
+          enum: [low, medium, high]
+          example: "high"
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.91
+        reasons:
+          type: array
+          items:
+            type: string
+          description: Factors that influenced the priority score
+          example: ["Urgent keyword detected", "High-priority sender", "Time-sensitive content"]
+
+    AIFeedback:
+      type: object
+      required:
+        - feedbackType
+        - wasCorrect
+      properties:
+        feedbackType:
+          type: string
+          enum: [categorization, priority, reply]
+          description: Type of AI prediction being evaluated (FR-014)
+        messageId:
+          type: string
+          format: uuid
+        wasCorrect:
+          type: boolean
+          description: Whether the AI prediction was correct
+        correctValue:
+          type: string
+          description: Correct value if prediction was wrong
+          nullable: true
+
+    # Analytics schemas
+    AnalyticsOverview:
+      type: object
+      properties:
+        periodType:
+          type: string
+          enum: [daily, weekly, monthly, yearly]
+          example: "weekly"
+        periodStart:
+          type: string
+          format: date
+          example: "2025-11-10"
+        periodEnd:
+          type: string
+          format: date
+          example: "2025-11-16"
+        totalMessagesReceived:
+          type: integer
+          description: Total messages received in period (FR-019)
+          example: 485
+        totalMessagesSent:
+          type: integer
+          description: Total messages sent/replied
+          example: 120
+        unreadCount:
+          type: integer
+          example: 23
+        urgentCount:
+          type: integer
+          description: Count of urgent messages (FR-028)
+          example: 8
+        messagesByPlatform:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            gmail: 320
+            whatsapp: 95
+            slack: 70
+        messagesByCategory:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            work: 280
+            personal: 150
+            shopping: 55
+        messagesByPriority:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            high: 95
+            medium: 290
+            low: 100
+        timeSavedMinutes:
+          type: integer
+          description: Estimated time saved using the app
+          example: 180
+        aiSuggestionsAccepted:
+          type: integer
+          description: Count of accepted AI suggestions
+          example: 45
+        aiSuggestionsTotal:
+          type: integer
+          description: Total AI suggestions generated
+          example: 110
+
+    ResponseTimeMetrics:
+      type: object
+      properties:
+        averageResponseTimeHours:
+          type: number
+          format: float
+          description: Average response time across all platforms (FR-019)
+          example: 4.5
+        medianResponseTimeHours:
+          type: number
+          format: float
+          example: 2.3
+        responseRate:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Percentage of messages that received a reply
+          example: 0.78
+        avgByPlatform:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+          example:
+            gmail: 5.2
+            whatsapp: 0.5
+            slack: 1.8
+
+    TopContact:
+      type: object
+      required:
+        - name
+        - identifier
+        - messageCount
+        - platform
+      properties:
+        name:
+          type: string
+          example: "Alice Smith"
+        identifier:
+          type: string
+          example: "alice@company.com"
+        messageCount:
+          type: integer
+          description: Number of messages exchanged (FR-019)
+          example: 85
+        platform:
+          type: string
+          example: "gmail"
+
+    PlatformDistribution:
+      type: object
+      properties:
+        platform:
+          type: string
+          example: "gmail"
+        messageCount:
+          type: integer
+          example: 320
+        percentage:
+          type: number
+          format: float
+          example: 66.0
+
+    # Authentication schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecurePass123!"
+
+    LoginResponse:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+        - user
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refreshToken:
+          type: string
+          description: JWT refresh token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        tokenType:
+          type: string
+          default: Bearer
+          example: "Bearer"
+        expiresIn:
+          type: integer
+          description: Access token expiration time in seconds
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - displayName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 255
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+
+    # Error schemas
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid request parameters"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "email"
+              message:
+                type: string
+                example: "Invalid email format"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "BAD_REQUEST"
+            message: "Invalid request parameters"
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication required"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "FORBIDDEN"
+            message: "You don't have permission to access this resource"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "NOT_FOUND"
+            message: "The requested resource was not found"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per window
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "RATE_LIMIT_EXCEEDED"
+            message: "Too many requests. Please try again later."
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred"

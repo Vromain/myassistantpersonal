@@ -1,0 +1,735 @@
+openapi: 3.0.3
+info:
+  title: Analytics API
+  version: 1.0.0
+
+paths:
+  /analytics/overview:
+    get:
+      tags:
+        - Analytics
+      summary: Get analytics overview
+      description: |
+        Get comprehensive analytics overview for a specified time period (FR-019).
+        Includes message volumes, platform distribution, category breakdown, and AI metrics.
+      operationId: getAnalyticsOverview
+      parameters:
+        - name: periodType
+          in: query
+          required: true
+          description: Time period granularity
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+            example: "weekly"
+        - name: periodStart
+          in: query
+          required: true
+          description: Period start date (ISO 8601)
+          schema:
+            type: string
+            format: date
+            example: "2025-11-10"
+        - name: periodEnd
+          in: query
+          required: false
+          description: Period end date (ISO 8601). If not provided, uses current date.
+          schema:
+            type: string
+            format: date
+            example: "2025-11-16"
+      responses:
+        '200':
+          description: Analytics overview retrieved
+          content:
+            application/json:
+              schema:
+                $ref: './schemas.yaml#/components/schemas/AnalyticsOverview'
+              example:
+                periodType: "weekly"
+                periodStart: "2025-11-10"
+                periodEnd: "2025-11-16"
+                totalMessagesReceived: 485
+                totalMessagesSent: 120
+                unreadCount: 23
+                urgentCount: 8
+                messagesByPlatform:
+                  gmail: 320
+                  whatsapp: 95
+                  slack: 70
+                messagesByCategory:
+                  work: 280
+                  personal: 150
+                  shopping: 55
+                messagesByPriority:
+                  high: 95
+                  medium: 290
+                  low: 100
+                timeSavedMinutes: 180
+                aiSuggestionsAccepted: 45
+                aiSuggestionsTotal: 110
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/response-times:
+    get:
+      tags:
+        - Analytics
+      summary: Get response time analytics
+      description: |
+        Analyze average response times across platforms and contacts (FR-019).
+        Helps track communication efficiency (SC-004).
+      operationId: getResponseTimeAnalytics
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: Start date for analysis
+          schema:
+            type: string
+            format: date
+            example: "2025-11-01"
+        - name: endDate
+          in: query
+          required: false
+          description: End date for analysis (defaults to current date)
+          schema:
+            type: string
+            format: date
+            example: "2025-11-16"
+        - name: platform
+          in: query
+          description: Filter by specific platform
+          schema:
+            type: string
+            enum: [gmail, outlook, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+      responses:
+        '200':
+          description: Response time analytics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: './schemas.yaml#/components/schemas/ResponseTimeMetrics'
+                  - type: object
+                    properties:
+                      startDate:
+                        type: string
+                        format: date
+                      endDate:
+                        type: string
+                        format: date
+                      totalMessagesAnalyzed:
+                        type: integer
+                        description: Number of messages included in analysis
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                averageResponseTimeHours: 4.5
+                medianResponseTimeHours: 2.3
+                responseRate: 0.78
+                avgByPlatform:
+                  gmail: 5.2
+                  whatsapp: 0.5
+                  slack: 1.8
+                  facebook: 8.5
+                totalMessagesAnalyzed: 485
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/top-contacts:
+    get:
+      tags:
+        - Analytics
+      summary: Get top contacts
+      description: |
+        Retrieve most frequent contacts with message counts (FR-019).
+        Shows up to top 10 contacts by default.
+      operationId: getTopContacts
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: Start date for analysis
+          schema:
+            type: string
+            format: date
+            example: "2025-11-01"
+        - name: endDate
+          in: query
+          required: false
+          description: End date for analysis
+          schema:
+            type: string
+            format: date
+            example: "2025-11-16"
+        - name: limit
+          in: query
+          description: Maximum number of contacts to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - name: platform
+          in: query
+          description: Filter by platform
+          schema:
+            type: string
+            enum: [gmail, outlook, facebook, instagram, whatsapp, slack, discord, telegram, signal]
+      responses:
+        '200':
+          description: Top contacts retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  contacts:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/TopContact'
+                  totalContacts:
+                    type: integer
+                    description: Total unique contacts in period
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                contacts:
+                  - name: "Alice Smith"
+                    identifier: "alice@company.com"
+                    messageCount: 85
+                    platform: "gmail"
+                  - name: "Bob Johnson"
+                    identifier: "+1234567890"
+                    messageCount: 62
+                    platform: "whatsapp"
+                  - name: "Carol Williams"
+                    identifier: "carol@company.com"
+                    messageCount: 47
+                    platform: "slack"
+                totalContacts: 156
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/platform-distribution:
+    get:
+      tags:
+        - Analytics
+      summary: Get platform distribution
+      description: |
+        Get message distribution across connected platforms (FR-019).
+        Shows percentage breakdown and message counts per platform.
+      operationId: getPlatformDistribution
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: Start date for analysis
+          schema:
+            type: string
+            format: date
+            example: "2025-11-01"
+        - name: endDate
+          in: query
+          required: false
+          description: End date for analysis
+          schema:
+            type: string
+            format: date
+            example: "2025-11-16"
+      responses:
+        '200':
+          description: Platform distribution data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  totalMessages:
+                    type: integer
+                    description: Total messages across all platforms
+                  distribution:
+                    type: array
+                    items:
+                      $ref: './schemas.yaml#/components/schemas/PlatformDistribution'
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                totalMessages: 485
+                distribution:
+                  - platform: "gmail"
+                    messageCount: 320
+                    percentage: 66.0
+                  - platform: "whatsapp"
+                    messageCount: 95
+                    percentage: 19.6
+                  - platform: "slack"
+                    messageCount: 70
+                    percentage: 14.4
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/category-breakdown:
+    get:
+      tags:
+        - Analytics
+      summary: Get category breakdown
+      description: Message distribution across categories
+      operationId: getCategoryBreakdown
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Category breakdown data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  totalCategorizedMessages:
+                    type: integer
+                  uncategorizedMessages:
+                    type: integer
+                  breakdown:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        categoryId:
+                          type: string
+                          format: uuid
+                        categoryName:
+                          type: string
+                        messageCount:
+                          type: integer
+                        percentage:
+                          type: number
+                          format: float
+                        averagePriority:
+                          type: number
+                          format: float
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                totalCategorizedMessages: 450
+                uncategorizedMessages: 35
+                breakdown:
+                  - categoryId: "880e8400-e29b-41d4-a716-446655440001"
+                    categoryName: "Work"
+                    messageCount: 280
+                    percentage: 62.2
+                    averagePriority: 68.5
+                  - categoryId: "880e8400-e29b-41d4-a716-446655440002"
+                    categoryName: "Personal"
+                    messageCount: 150
+                    percentage: 33.3
+                    averagePriority: 45.2
+                  - categoryId: "880e8400-e29b-41d4-a716-446655440003"
+                    categoryName: "Shopping"
+                    messageCount: 20
+                    percentage: 4.4
+                    averagePriority: 32.1
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/message-trends:
+    get:
+      tags:
+        - Analytics
+      summary: Get message volume trends
+      description: Track message volume trends over time
+      operationId: getMessageTrends
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: granularity
+          in: query
+          description: Data point granularity
+          schema:
+            type: string
+            enum: [hourly, daily, weekly]
+            default: daily
+      responses:
+        '200':
+          description: Message trends data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  granularity:
+                    type: string
+                  dataPoints:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                          format: date-time
+                        messagesReceived:
+                          type: integer
+                        messagesSent:
+                          type: integer
+                        urgentMessages:
+                          type: integer
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                granularity: "daily"
+                dataPoints:
+                  - timestamp: "2025-11-15T00:00:00Z"
+                    messagesReceived: 72
+                    messagesSent: 18
+                    urgentMessages: 3
+                  - timestamp: "2025-11-16T00:00:00Z"
+                    messagesReceived: 65
+                    messagesSent: 22
+                    urgentMessages: 2
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/ai-performance:
+    get:
+      tags:
+        - Analytics
+      summary: Get AI performance metrics
+      description: |
+        Track AI model performance metrics including accuracy, acceptance rates, and improvements.
+        Maps to success criteria SC-002 (40% reply acceptance) and SC-003 (80% categorization accuracy).
+      operationId: getAIPerformance
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: AI performance metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  replySuggestions:
+                    type: object
+                    properties:
+                      totalGenerated:
+                        type: integer
+                        description: Total reply suggestions generated
+                      accepted:
+                        type: integer
+                        description: Number of suggestions accepted/used
+                      acceptanceRate:
+                        type: number
+                        format: float
+                        description: Percentage of suggestions accepted (target 40%)
+                      avgConfidence:
+                        type: number
+                        format: float
+                  categorization:
+                    type: object
+                    properties:
+                      totalPredictions:
+                        type: integer
+                      userCorrections:
+                        type: integer
+                      accuracy:
+                        type: number
+                        format: float
+                        description: Categorization accuracy (target 80%)
+                      accuracyImprovement:
+                        type: number
+                        format: float
+                        description: Accuracy improvement over baseline
+                  priorityScoring:
+                    type: object
+                    properties:
+                      totalScored:
+                        type: integer
+                      userAgreementRate:
+                        type: number
+                        format: float
+                        description: Percentage of priority scores users agree with
+                      avgConfidence:
+                        type: number
+                        format: float
+                  timeSaved:
+                    type: object
+                    properties:
+                      totalMinutes:
+                        type: integer
+                        description: Estimated time saved using AI features
+                      perMessage:
+                        type: number
+                        format: float
+                        description: Average time saved per message
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                replySuggestions:
+                  totalGenerated: 110
+                  accepted: 45
+                  acceptanceRate: 0.409
+                  avgConfidence: 0.87
+                categorization:
+                  totalPredictions: 485
+                  userCorrections: 42
+                  accuracy: 0.813
+                  accuracyImprovement: 0.09
+                priorityScoring:
+                  totalScored: 485
+                  userAgreementRate: 0.82
+                  avgConfidence: 0.89
+                timeSaved:
+                  totalMinutes: 180
+                  perMessage: 2.2
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/productivity:
+    get:
+      tags:
+        - Analytics
+      summary: Get productivity insights
+      description: |
+        Calculate productivity metrics including time saved and efficiency gains (SC-004).
+        Target: 50% reduction in time spent checking multiple platforms.
+      operationId: getProductivityInsights
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Productivity insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startDate:
+                    type: string
+                    format: date
+                  endDate:
+                    type: string
+                    format: date
+                  timeSavedMinutes:
+                    type: integer
+                    description: Total time saved in minutes
+                  platformSwitchesAvoided:
+                    type: integer
+                    description: Number of platform context switches avoided
+                  messagesProcessed:
+                    type: integer
+                    description: Total messages processed
+                  avgTimePerMessage:
+                    type: number
+                    format: float
+                    description: Average time spent per message in minutes
+                  responseEfficiency:
+                    type: number
+                    format: float
+                    description: Response efficiency score (0-100)
+                  comparisonToPreviousPeriod:
+                    type: object
+                    properties:
+                      timeSavedChange:
+                        type: number
+                        format: float
+                        description: Percentage change in time saved
+                      efficiencyChange:
+                        type: number
+                        format: float
+                        description: Percentage change in efficiency
+              example:
+                startDate: "2025-11-01"
+                endDate: "2025-11-16"
+                timeSavedMinutes: 180
+                platformSwitchesAvoided: 145
+                messagesProcessed: 485
+                avgTimePerMessage: 1.8
+                responseEfficiency: 78.5
+                comparisonToPreviousPeriod:
+                  timeSavedChange: 15.2
+                  efficiencyChange: 8.7
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+  /analytics/export:
+    get:
+      tags:
+        - Analytics
+      summary: Export analytics data
+      description: Export analytics data in CSV or JSON format
+      operationId: exportAnalytics
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          description: Export format
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: includeDetails
+          in: query
+          description: Include detailed message-level data
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Analytics data exported
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Complete analytics export in JSON format
+            text/csv:
+              schema:
+                type: string
+                description: Analytics data in CSV format
+        '400':
+          $ref: './schemas.yaml#/components/responses/BadRequest'
+        '401':
+          $ref: './schemas.yaml#/components/responses/Unauthorized'
+        '429':
+          $ref: './schemas.yaml#/components/responses/RateLimitExceeded'
+        '500':
+          $ref: './schemas.yaml#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
