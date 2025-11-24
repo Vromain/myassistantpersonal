@@ -54,31 +54,6 @@ class NotificationService {
   /// Setup message handlers for foreground/background
   void setupMessageHandlers() {}
 
-  /// Handle incoming message
-  void _handleMessage(Map<String, dynamic> data, {bool inForeground = false}) {}
-
-  /// Handle notification tap
-  void _handleNotificationTap(Map<String, dynamic> data) {}
-
-  /// Show in-app notification (when app is in foreground)
-  void _showInAppNotification(Map<String, dynamic> data) {}
-
-  /// Refresh token with backend
-  Future<void> _refreshToken(String newToken) async {
-    if (_cachedDeviceId == null) return;
-    final apiClient = ref.read(apiClientProvider);
-    await apiClient.registerDeviceToken({
-      'token': newToken,
-      'deviceId': _cachedDeviceId!,
-    });
-  }
-
-  /// Generate unique device ID
-  String _generateDeviceId() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'device_$timestamp';
-  }
-
   /// Get notification preferences from backend
   Future<NotificationPreferences?> getPreferences() async {
     try {
@@ -90,8 +65,7 @@ class NotificationService {
       }
 
       return null;
-    } catch (error) {
-      print('❌ Failed to get preferences: $error');
+    } catch (_) {
       return null;
     }
   }
@@ -105,8 +79,7 @@ class NotificationService {
       );
 
       return response['success'] == true;
-    } catch (error) {
-      print('❌ Failed to update preferences: $error');
+    } catch (_) {
       return false;
     }
   }

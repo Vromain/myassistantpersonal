@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
-import 'package:retrofit/retrofit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:retrofit/retrofit.dart';
+import '../models/message.dart';
 import 'dio_client.dart';
 
-import '../models/message.dart';
+ 
 
 part 'api_client.g.dart';
 
