@@ -201,8 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                         final result = await AccountsService.testConnection(
                                           account['id']
                                         );
-                                        if (this.context.mounted) {
-                                          ScaffoldMessenger.of(this.context).showSnackBar(
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(this.context).showSnackBar(
                                             SnackBar(
                                               content: Text(
                                                 result['success']
@@ -214,7 +214,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   : Colors.red,
                                             ),
                                           );
-                                        }
                                       },
                                       icon: const Icon(Icons.wifi_tethering, size: 18),
                                       label: const Text('Tester'),
@@ -269,7 +268,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             account['id']
                                           );
                                           if (result['success']) {
-                                            Navigator.of(dialogContext).pop();
+                                            if (!mounted) return;
+                                            Navigator.of(this.context).pop();
                                             _showIntegrationsDialog(this.context);
                                             ScaffoldMessenger.of(this.context).showSnackBar(
                                               const SnackBar(
@@ -615,11 +615,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    if (isLoading) return;
+                    Navigator.of(dialogContext).pop();
+                  },
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: isLoading ? null : () async {
+                  onPressed: () async {
+                    if (isLoading) return;
                     // Connect to IMAP
                     final email = emailController.text.trim();
                     final password = passwordController.text;
@@ -656,8 +660,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
 
                     if (result['success']) {
-                      Navigator.of(dialogContext).pop();
                       if (!mounted) return;
+                      Navigator.of(this.context).pop();
                       ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
                           content: Text('Compte IMAP connecté avec succès!'),
@@ -775,11 +779,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    if (isLoading) return;
+                    Navigator.of(dialogContext).pop();
+                  },
                   child: const Text('Annuler'),
                 ),
                 ElevatedButton(
-                  onPressed: isLoading ? null : () async {
+                  onPressed: () async {
+                    if (isLoading) return;
                     final email = emailController.text.trim();
                     final password = passwordController.text;
                     final host = hostController.text.trim();
@@ -824,8 +832,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
 
                     if (result['success']) {
-                      Navigator.of(dialogContext).pop();
                       if (!mounted) return;
+                      Navigator.of(this.context).pop();
                       ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
                           content: Text('Compte IMAP mis à jour avec succès!'),

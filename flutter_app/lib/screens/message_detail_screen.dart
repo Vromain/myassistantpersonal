@@ -6,7 +6,6 @@ import '../models/category.dart';
 import '../models/message.dart';
 import '../providers/categories_provider.dart';
 import '../providers/messages_provider.dart';
-import '../services/message_repository.dart';
 import '../widgets/priority_badge.dart';
 import 'compose_reply_screen.dart';
 
