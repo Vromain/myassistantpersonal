@@ -6,11 +6,22 @@ import '../providers/messages_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/message_card.dart';
 import '../widgets/priority_filter.dart';
+import '../widgets/analysis_filter.dart';
+import '../widgets/statistics_card.dart';
 import '../models/message.dart';
 
 /// Inbox Screen
 /// Task: T034 - Create inbox screen with message list
+/// Task: T038 - Implement sort by priority functionality
+/// Task: T051 - Add StatisticsCard to inbox screen showing total messages and spam count
 /// Reference: specs/001-ai-communication-hub/plan.dart
+
+enum SortOption {
+  priorityHighToLow,
+  priorityLowToHigh,
+  timestampNewest,
+  timestampOldest,
+}
 
 class InboxScreen extends ConsumerStatefulWidget {
   const InboxScreen({super.key});
@@ -24,6 +35,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       RefreshController(initialRefresh: false);
   PriorityLevel? _selectedPriority;
   bool? _showUnreadOnly;
+  AnalysisFilterOptions _analysisFilters = const AnalysisFilterOptions();
+  SortOption _sortBy = SortOption.timestampNewest;
 
   @override
   void dispose() {
@@ -64,6 +77,115 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 delegate: MessageSearchDelegate(ref),
               );
             },
+          ),
+          // Sort button
+          PopupMenuButton<SortOption>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'Sort messages',
+            onSelected: (SortOption option) {
+              setState(() {
+                _sortBy = option;
+              });
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: SortOption.priorityHighToLow,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.arrow_upward,
+                      size: 18,
+                      color: _sortBy == SortOption.priorityHighToLow
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Priority: High to Low',
+                      style: _sortBy == SortOption.priorityHighToLow
+                          ? TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: SortOption.priorityLowToHigh,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.arrow_downward,
+                      size: 18,
+                      color: _sortBy == SortOption.priorityLowToHigh
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Priority: Low to High',
+                      style: _sortBy == SortOption.priorityLowToHigh
+                          ? TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: SortOption.timestampNewest,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 18,
+                      color: _sortBy == SortOption.timestampNewest
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Newest First',
+                      style: _sortBy == SortOption.timestampNewest
+                          ? TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: SortOption.timestampOldest,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.history,
+                      size: 18,
+                      color: _sortBy == SortOption.timestampOldest
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Oldest First',
+                      style: _sortBy == SortOption.timestampOldest
+                          ? TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           // Filter button
           IconButton(
@@ -177,6 +299,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       );
     }
 
+    // Sort messages based on selected sort option
+    final sortedMessages = _sortMessages(data.messages);
+
     return SmartRefresher(
       controller: _refreshController,
       enablePullDown: true,
@@ -189,29 +314,81 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         await ref.read(messagesProvider.notifier).loadMore();
         _refreshController.loadComplete();
       },
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: data.messages.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final message = data.messages[index];
-          return MessageCard(
-            message: message,
-            onTap: () => context.push('/message/${message.id}'),
-            onMarkAsRead: (readStatus) async {
-              await ref
-                  .read(messagesProvider.notifier)
-                  .markAsRead(message.id, readStatus);
-              ref.invalidate(unreadCountProvider);
-            },
-            onArchive: () async {
-              await ref.read(messagesProvider.notifier).archive(message.id);
-              ref.invalidate(unreadCountProvider);
-            },
-          );
-        },
+      child: CustomScrollView(
+        slivers: [
+          // Statistics Card at the top
+          SliverToBoxAdapter(
+            child: const StatisticsCard(),
+          ),
+          // Message list
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index.isOdd) return const SizedBox(height: 12);
+                  final messageIndex = index ~/ 2;
+                  final message = sortedMessages[messageIndex];
+                  return MessageCard(
+                    message: message,
+                    onTap: () => context.push('/message/${message.id}'),
+                    onMarkAsRead: (readStatus) async {
+                      await ref
+                          .read(messagesProvider.notifier)
+                          .markAsRead(message.id, readStatus);
+                      ref.invalidate(unreadCountProvider);
+                    },
+                    onArchive: () async {
+                      await ref.read(messagesProvider.notifier).archive(message.id);
+                      ref.invalidate(unreadCountProvider);
+                    },
+                  );
+                },
+                childCount: sortedMessages.length * 2 - 1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<Message> _sortMessages(List<Message> messages) {
+    // Create a mutable copy to sort
+    final sortedList = List<Message>.from(messages);
+
+    switch (_sortBy) {
+      case SortOption.priorityHighToLow:
+        sortedList.sort((a, b) {
+          // High = 0, Medium = 1, Low = 2 in enum index
+          // We want high first, so compare indices ascending
+          return a.priorityLevel.index.compareTo(b.priorityLevel.index);
+        });
+        break;
+
+      case SortOption.priorityLowToHigh:
+        sortedList.sort((a, b) {
+          // Low first, so compare indices descending
+          return b.priorityLevel.index.compareTo(a.priorityLevel.index);
+        });
+        break;
+
+      case SortOption.timestampNewest:
+        sortedList.sort((a, b) {
+          // Newest first, so compare timestamps descending
+          return b.timestamp.compareTo(a.timestamp);
+        });
+        break;
+
+      case SortOption.timestampOldest:
+        sortedList.sort((a, b) {
+          // Oldest first, so compare timestamps ascending
+          return a.timestamp.compareTo(b.timestamp);
+        });
+        break;
+    }
+
+    return sortedList;
   }
 
   void _showFilterSheet(BuildContext context) {
@@ -257,6 +434,17 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Analysis filter
+                const Divider(),
+                const SizedBox(height: 16),
+                AnalysisFilter(
+                  options: _analysisFilters,
+                  onChanged: (filters) {
+                    setState(() => _analysisFilters = filters);
+                  },
+                ),
+                const SizedBox(height: 24),
+
                 // Apply button
                 Row(
                   children: [
@@ -266,6 +454,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                           setState(() {
                             _selectedPriority = null;
                             _showUnreadOnly = null;
+                            _analysisFilters = const AnalysisFilterOptions();
                           });
                           ref.read(messagesProvider.notifier).filter();
                           Navigator.pop(context);
@@ -277,6 +466,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
+                          // Note: For now, filters are only visual
+                          // Full backend filtering integration would need API updates
                           ref.read(messagesProvider.notifier).filter(
                                 priority: _selectedPriority,
                                 readStatus:

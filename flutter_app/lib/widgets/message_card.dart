@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../models/message.dart';
+import '../models/message_analysis.dart';
 import '../models/category.dart';
 import '../providers/categories_provider.dart';
 import 'priority_badge.dart';
+import 'analysis_badges.dart';
 
 /// Message Card Widget
 /// Task: T036 - Create message card widget
@@ -12,6 +14,7 @@ import 'priority_badge.dart';
 
 class MessageCard extends ConsumerWidget {
   final Message message;
+  final MessageAnalysis? analysis;
   final VoidCallback? onTap;
   final Function(bool)? onMarkAsRead;
   final VoidCallback? onArchive;
@@ -19,6 +22,7 @@ class MessageCard extends ConsumerWidget {
   const MessageCard({
     super.key,
     required this.message,
+    this.analysis,
     this.onTap,
     this.onMarkAsRead,
     this.onArchive,
@@ -153,7 +157,7 @@ class MessageCard extends ConsumerWidget {
               ),
 
               // Footer row (tags, actions)
-              if (message.hasAttachments || message.isUrgent || category != null) ...[
+              if (message.hasAttachments || message.isUrgent || category != null || analysis != null) ...[
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -256,6 +260,15 @@ class MessageCard extends ConsumerWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                    // Analysis badges (spam, sentiment, response needed)
+                    if (analysis != null) ...[
+                      if (message.hasAttachments || message.isUrgent || category != null)
+                        const SizedBox(width: 8),
+                      AnalysisBadges(
+                        analysis: analysis,
+                        compact: true,
                       ),
                     ],
                     const Spacer(),

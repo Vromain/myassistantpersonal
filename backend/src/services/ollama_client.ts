@@ -48,13 +48,13 @@ class OllamaClient {
 
     this.localClient = axios.create({
       baseURL: localUrl,
-      timeout: 30000,
+      timeout: 5000, // T047: 5-second timeout for analysis operations
       headers: { 'Content-Type': 'application/json' }
     });
 
     this.remoteClient = axios.create({
       baseURL: remoteUrl,
-      timeout: 30000,
+      timeout: 5000, // T047: 5-second timeout for analysis operations
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -175,6 +175,16 @@ class OllamaClient {
 
       throw new Error(`Ollama request failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Generate completion for a simple prompt
+   * Wrapper around chat() for backward compatibility
+   */
+  async generateCompletion(prompt: string, options?: OllamaGenerateOptions): Promise<string> {
+    return this.chat([
+      { role: 'user', content: prompt }
+    ], options);
   }
 
   /**

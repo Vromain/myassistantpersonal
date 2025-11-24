@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Cache Refresh</title>
+  <script>
+    // Force reload main app with cache busting
+    setTimeout(function() {
+      window.location.href = '/?v=' + Date.now();
+    }, 100);
+  </script>
+</head>
+<body>
+  <p>Rafraîchissement du cache...</p>
+</body>
+</html>

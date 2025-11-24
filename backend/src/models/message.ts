@@ -18,6 +18,7 @@ export interface IAttachment {
 }
 
 export interface IMessage extends Document {
+  userId: mongoose.Types.ObjectId;
   accountId: mongoose.Types.ObjectId;
   externalId: string;  // ID from the original platform
   platform: Platform;
@@ -25,6 +26,8 @@ export interface IMessage extends Document {
   recipient: string;
   subject?: string;
   content: string;
+  from: string;  // Alias for sender (for auto-delete service compatibility)
+  body: string;  // Alias for content (for auto-delete service compatibility)
   timestamp: Date;
   readStatus: boolean;
   priorityScore: number;  // 0-100
@@ -34,6 +37,9 @@ export interface IMessage extends Document {
   isUrgent: boolean;
   metadata: Record<string, any>;  // Platform-specific data
   archivedAt?: Date;
+  isTrashed: boolean;  // T062 - Auto-delete tracking
+  trashedAt?: Date;    // T062 - Auto-delete tracking
+  autoDeleted: boolean;  // T063 - Auto-delete tracking
   createdAt: Date;
   updatedAt: Date;
 
@@ -54,6 +60,12 @@ const AttachmentSchema = new Schema<IAttachment>({
 }, { _id: false });
 
 const MessageSchema = new Schema<IMessage>({
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   accountId: {
     type: Schema.Types.ObjectId,
     ref: 'ConnectedAccount',
@@ -126,6 +138,20 @@ const MessageSchema = new Schema<IMessage>({
   },
   archivedAt: {
     type: Date,
+    index: true
+  },
+  isTrashed: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  trashedAt: {
+    type: Date,
+    index: true
+  },
+  autoDeleted: {
+    type: Boolean,
+    default: false,
     index: true
   }
 }, {

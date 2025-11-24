@@ -3,13 +3,30 @@
 ///
 /// Configuration for backend URLs and external services
 
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class Env {
+  // Get the appropriate base URL depending on the platform
+  static String get _baseHost {
+    if (kIsWeb) {
+      // Web: use localhost
+      return 'localhost';
+    } else if (Platform.isAndroid) {
+      // Android emulator: use special IP to access host machine
+      return '10.0.2.2';
+    } else {
+      // iOS simulator and other platforms: use localhost
+      return 'localhost';
+    }
+  }
+
   // Backend API
-  static const String backendUrl = 'http://localhost:3002';
-  static const String apiBaseUrl = 'http://localhost:3002/api/v1';
+  static String get backendUrl => 'http://$_baseHost:3002';
+  static String get apiBaseUrl => 'http://$_baseHost:3002/api/v1';
 
   // Ollama AI endpoints
-  static const String ollamaLocalUrl = 'http://localhost:11434';
+  static String get ollamaLocalUrl => 'http://$_baseHost:11434';
   static const String ollamaRemoteUrl = 'http://94.23.49.185:11434';
 
   // OAuth redirect (for Gmail authentication)

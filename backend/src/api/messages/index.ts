@@ -172,6 +172,107 @@ router.get(
 );
 
 /**
+ * POST /api/v1/messages/:id/analyze
+ * Trigger AI analysis for a message
+ * Task: T026 - Create analyze endpoint
+ */
+router.post(
+  '/:id/analyze',
+  [param('id').isMongoId()],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const userId = req.userId!;
+      const { id } = req.params;
+
+      // Verify message belongs to user
+      const message = await messageAggregator.getMessage(id, userId);
+      if (!message) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: 'Message not found'
+        });
+        return;
+      }
+
+      // Import and trigger analysis
+      const { messageAnalysisService } = await import('../../services/message_analysis_service');
+      const analysis = await messageAnalysisService.analyzeMessage(id);
+
+      console.log(`✅ Message analysis completed: ${id}`);
+
+      res.json({
+        success: true,
+        analysis
+      });
+    } catch (error: any) {
+      console.error('❌ Error analyzing message:', error);
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: error.message || 'Failed to analyze message'
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/v1/messages/:id/analysis
+ * Get existing analysis for a message
+ * Task: T027 - Create get analysis endpoint
+ */
+router.get(
+  '/:id/analysis',
+  [param('id').isMongoId()],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const userId = req.userId!;
+      const { id } = req.params;
+
+      // Verify message belongs to user
+      const message = await messageAggregator.getMessage(id, userId);
+      if (!message) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: 'Message not found'
+        });
+        return;
+      }
+
+      // Import MessageAnalysis model and fetch analysis
+      const { MessageAnalysis } = await import('../../models/message_analysis');
+      const analysis = await MessageAnalysis.findOne({ messageId: id });
+
+      if (!analysis) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: 'Analysis not found for this message'
+        });
+        return;
+      }
+
+      res.json(analysis);
+    } catch (error: any) {
+      console.error('❌ Error fetching analysis:', error);
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'Failed to fetch message analysis'
+      });
+    }
+  }
+);
+
+/**
  * PATCH /api/v1/messages/:id/read
  * Mark message as read or unread
  */

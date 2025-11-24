@@ -14,6 +14,9 @@ import offlineRoutes from './offline';
 import notificationsRoutes from './notifications';
 import accountsRoutes from './accounts';
 import servicesRoutes from './services';
+import settingsRoutes from './settings';
+import autoDeleteRoutes from './auto_delete';
+import dashboardRoutes from './dashboard';
 
 const router = Router();
 
@@ -44,5 +47,14 @@ router.use('/notifications', notificationsRoutes);
 
 // Mount services routes
 router.use('/services', servicesRoutes);
+
+// Mount settings routes (T055)
+router.use('/settings', settingsRoutes);
+
+// Mount auto-delete routes (T066-T067)
+router.use('/auto-delete', autoDeleteRoutes);
+
+// Mount dashboard routes
+router.use('/dashboard', dashboardRoutes);
 
 export default router;

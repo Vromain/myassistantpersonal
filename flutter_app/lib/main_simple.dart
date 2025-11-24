@@ -3,6 +3,7 @@ import 'utils/env.dart';
 import 'services/auth_service.dart';
 import 'services/accounts_service.dart';
 import 'screens/services_screen.dart';
+import 'screens/settings_screen.dart';
 // Note: dart:html import causes issues, using url_launcher instead
 import 'package:url_launcher/url_launcher.dart';
 
@@ -69,7 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
       case 'settings':
-        _showSettingsDialog(context);
+        // Task: T053 - Add Settings navigation to user dropdown menu
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        );
         break;
       case 'logout':
         await _handleLogout(context);
@@ -404,6 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Communication Hub'),
+        backgroundColor: Colors.blue,
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle),
@@ -495,10 +500,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 48),
-              _buildStatusCard('Backend API', Env.apiBaseUrl, true),
-              const SizedBox(height: 16),
-              _buildStatusCard('Ollama AI', Env.ollamaLocalUrl, true),
               const SizedBox(height: 48),
               Card(
                 elevation: 2,

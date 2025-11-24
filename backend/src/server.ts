@@ -10,6 +10,7 @@ import { db } from './db/connection';
 import { configureGmailStrategy } from './services/auth/gmail_strategy';
 import { ollamaClient } from './services/ollama_client';
 import { syncScheduler } from './services/sync_scheduler';
+import { emailProcessingCron } from './services/email_processing_cron';
 import { Category } from './models/category';
 import apiRoutes from './api';
 
@@ -174,6 +175,12 @@ async function startServer() {
     syncScheduler.start();
     const schedulerStatus = syncScheduler.getStatus();
     console.log(`✅ Sync scheduler running (${schedulerStatus.scheduledAccounts} accounts)\n`);
+
+    // Start email processing cron job (every 15 minutes)
+    console.log('⏰ Starting email processing cron job...');
+    emailProcessingCron.start('*/15 * * * *'); // Every 15 minutes
+    const cronStatus = emailProcessingCron.getStatus();
+    console.log(`✅ Email processing cron ${cronStatus.isRunning ? 'started' : 'failed'}\n`);
 
     // Start Express server
     app.listen(PORT, () => {

@@ -318,6 +318,10 @@ export class GmailSyncService {
       this.scorePriorityAsync(message);
 
       await message.save();
+
+      // T028: Trigger AI analysis for the new message (async, don't block sync)
+      this.analyzeMessageAsync(message._id.toString());
+
       return true;
     } catch (error: any) {
       console.error('❌ Error storing message:', error.message);
@@ -464,6 +468,21 @@ export class GmailSyncService {
     } catch (error) {
       console.error('❌ AI priority scoring failed:', error);
       // Message already saved with default score, no action needed
+    }
+  }
+
+  /**
+   * Trigger AI analysis for a message (async, non-blocking)
+   * Task: T028 - Integrate analysis into sync flow
+   */
+  private async analyzeMessageAsync(messageId: string): Promise<void> {
+    try {
+      const { messageAnalysisService } = await import('../message_analysis_service');
+      await messageAnalysisService.analyzeMessage(messageId);
+      console.log(`🔍 Message analysis completed: ${messageId}`);
+    } catch (error: any) {
+      console.error('❌ Message analysis failed:', error.message);
+      // Don't block sync if analysis fails
     }
   }
 

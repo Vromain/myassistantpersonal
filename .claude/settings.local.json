@@ -40,7 +40,12 @@
       "Bash(flutter pub add:*)",
       "Bash(flutter clean:*)",
       "Bash(.specify/scripts/bash/create-new-feature.sh:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "SlashCommand(/speckit.plan)",
+      "Bash(if [ -d \"/Users/romainvillaume/Documents/projets/myassistanpersonal/specs/002-intelligent-message-analysis/checklists\" ])",
+      "Bash(then ls -la /Users/romainvillaume/Documents/projets/myassistanpersonal/specs/002-intelligent-message-analysis/checklists/)",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter devices:*)"
     ],
     "deny": [],
     "ask": []

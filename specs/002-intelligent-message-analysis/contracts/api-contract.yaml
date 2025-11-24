@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: Intelligent Message Analysis API
+  description: API endpoints for AI-powered message analysis, spam detection, and reply generation
+  version: 1.0.0
+  contact:
+    name: MyAssistantPersonal Team
+
+servers:
+  - url: http://localhost:3002/api/v1
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /services/health:
+    get:
+      summary: Get service health status
+      description: Returns health status of Backend API and Ollama AI services
+      operationId: getServicesHealth
+      tags:
+        - Services
+      responses:
+        '200':
+          description: Service health retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicesHealthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /messages/{messageId}/analysis:
+    get:
+      summary: Get message analysis
+      description: Retrieve AI analysis for a specific message
+      operationId: getMessageAnalysis
+      tags:
+        - Messages
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: ID of the message to get analysis for
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '200':
+          description: Analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageAnalysisResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      summary: Trigger message analysis
+      description: Trigger AI analysis for a specific message (creates MessageAnalysis if not exists)
+      operationId: analyzeMessage
+      tags:
+        - Messages
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          description: ID of the message to analyze
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+      responses:
+        '201':
+          description: Analysis created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageAnalysisResponse'
+        '200':
+          description: Analysis already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageAnalysisResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '503':
+          description: Ollama AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: Service Unavailable
+                message: Ollama AI is currently offline
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /settings:
+    get:
+      summary: Get user settings
+      description: Retrieve current user's automation settings
+      operationId: getUserSettings
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: Settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      summary: Update user settings
+      description: Update automation settings for current user
+      operationId: updateUserSettings
+      tags:
+        - Settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsUpdateRequest'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettingsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ServicesHealthResponse:
+      type: object
+      required:
+        - success
+        - timestamp
+        - services
+      properties:
+        success:
+          type: boolean
+          example: true
+        timestamp:
+          type: string
+          format: date-time
+          example: '2025-11-19T10:30:00Z'
+        services:
+          type: object
+          required:
+            - backend
+            - ollama
+          properties:
+            backend:
+              $ref: '#/components/schemas/BackendServiceHealth'
+            ollama:
+              $ref: '#/components/schemas/OllamaServiceHealth'
+
+    BackendServiceHealth:
+      type: object
+      required:
+        - serviceName
+        - status
+        - endpoint
+        - responseTime
+        - lastCheckTimestamp
+      properties:
+        serviceName:
+          type: string
+          example: 'Backend API'
+        status:
+          type: string
+          enum: [online, offline, degraded]
+          example: 'online'
+        endpoint:
+          type: string
+          example: 'http://localhost:3002'
+        responseTime:
+          type: integer
+          description: Response time in milliseconds
+          example: 45
+        lastCheckTimestamp:
+          type: string
+          format: date-time
+          example: '2025-11-19T10:30:00Z'
+        errorMessage:
+          type: string
+          example: 'Connection timeout'
+
+    OllamaServiceHealth:
+      type: object
+      required:
+        - serviceName
+        - status
+        - lastCheckTimestamp
+      properties:
+        serviceName:
+          type: string
+          example: 'Ollama AI'
+        status:
+          type: string
+          enum: [online, offline, degraded]
+          example: 'online'
+        endpoint:
+          type: string
+          example: 'http://localhost:11434'
+        lastCheckTimestamp:
+          type: string
+          format: date-time
+          example: '2025-11-19T10:30:00Z'
+        errorMessage:
+          type: string
+          example: 'Model not loaded'
+        metadata:
+          type: object
+          properties:
+            modelName:
+              type: string
+              example: 'llama2'
+            availableModels:
+              type: array
+              items:
+                type: string
+              example: ['llama2', 'mistral']
+            failureCount:
+              type: integer
+              example: 0
+
+    MessageAnalysisResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/MessageAnalysis'
+
+    MessageAnalysis:
+      type: object
+      required:
+        - messageId
+        - analysisTimestamp
+        - analysisVersion
+        - spamProbability
+        - isSpam
+        - needsResponse
+        - responseConfidence
+        - sentiment
+        - priorityLevel
+      properties:
+        messageId:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+          example: '507f1f77bcf86cd799439011'
+        analysisTimestamp:
+          type: string
+          format: date-time
+          example: '2025-11-19T10:30:00Z'
+        analysisVersion:
+          type: string
+          example: '1.0.0'
+        spamProbability:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 95
+        isSpam:
+          type: boolean
+          example: true
+        needsResponse:
+          type: boolean
+          example: false
+        responseConfidence:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 20
+        sentiment:
+          type: string
+          enum: [positive, neutral, negative]
+          example: 'negative'
+        priorityLevel:
+          type: string
+          enum: [high, medium, low]
+          example: 'low'
+        generatedReplyText:
+          type: string
+          example: 'Thank you for your message. I will get back to you shortly.'
+
+    UserSettingsResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/UserSettings'
+
+    UserSettings:
+      type: object
+      required:
+        - userId
+        - autoDeleteSpamEnabled
+        - spamThreshold
+        - autoSendRepliesEnabled
+        - responseConfidenceThreshold
+        - autoReplyConditions
+        - lastUpdated
+      properties:
+        userId:
+          type: string
+          pattern: '^[0-9a-fA-F]{24}$'
+          example: '507f1f77bcf86cd799439011'
+        autoDeleteSpamEnabled:
+          type: boolean
+          example: false
+        spamThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 80
+        autoSendRepliesEnabled:
+          type: boolean
+          example: false
+        responseConfidenceThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 85
+        autoReplyConditions:
+          $ref: '#/components/schemas/AutoReplyConditions'
+        lastUpdated:
+          type: string
+          format: date-time
+          example: '2025-11-19T10:30:00Z'
+
+    AutoReplyConditions:
+      type: object
+      required:
+        - senderWhitelist
+        - senderBlacklist
+        - businessHoursOnly
+        - maxRepliesPerDay
+      properties:
+        senderWhitelist:
+          type: array
+          items:
+            type: string
+            format: email
+          example: ['important@example.com']
+        senderBlacklist:
+          type: array
+          items:
+            type: string
+            format: email
+          example: ['spam@example.com']
+        businessHoursOnly:
+          type: boolean
+          example: false
+        maxRepliesPerDay:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 10
+
+    UserSettingsUpdateRequest:
+      type: object
+      properties:
+        autoDeleteSpamEnabled:
+          type: boolean
+        spamThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        autoSendRepliesEnabled:
+          type: boolean
+        responseConfidenceThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        autoReplyConditions:
+          $ref: '#/components/schemas/AutoReplyConditions'
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+        - message
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: 'Bad Request'
+        message:
+          type: string
+          example: 'Invalid message ID format'
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Unauthorized
+            message: Authentication token required
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Not Found
+            message: Message not found
+
+    BadRequestError:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Bad Request
+            message: spamThreshold must be between 0 and 100
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error: Internal Server Error
+            message: An unexpected error occurred

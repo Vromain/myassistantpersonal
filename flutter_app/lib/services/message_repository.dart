@@ -1,4 +1,5 @@
 import '../models/message.dart';
+import '../models/message_analysis.dart';
 import 'api_client.dart';
 import 'dio_client.dart';
 import 'database_helper.dart';
@@ -276,6 +277,35 @@ class MessageRepository {
       );
       return response['sentMessageId'] as String? ?? '';
     } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Trigger AI analysis for a message
+  /// Task: T031 - Implement analyzeMessage method
+  Future<MessageAnalysis> analyzeMessage(String messageId) async {
+    try {
+      final response = await _apiClient.post(
+        '/messages/$messageId/analyze',
+        {},
+      );
+      return MessageAnalysis.fromJson(response['analysis'] as Map<String, dynamic>);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Get existing analysis for a message
+  /// Task: T032 - Implement getMessageAnalysis method
+  Future<MessageAnalysis?> getMessageAnalysis(String messageId) async {
+    try {
+      final response = await _apiClient.get('/messages/$messageId/analysis');
+      return MessageAnalysis.fromJson(response as Map<String, dynamic>);
+    } catch (e) {
+      // Return null if analysis doesn't exist (404)
+      if (e.toString().contains('404') || e.toString().contains('Not Found')) {
+        return null;
+      }
       throw _handleError(e);
     }
   }
