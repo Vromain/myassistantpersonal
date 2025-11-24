@@ -362,47 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.settings),
-              SizedBox(width: 12),
-              Text('Paramètres'),
-            ],
-          ),
-          content: const SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Paramètres de l\'application',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 16),
-                Text('• Notifications'),
-                Text('• Synchronisation'),
-                Text('• Heures silencieuses'),
-                Text('• Rétention des données'),
-                SizedBox(height: 16),
-                Text('Ces paramètres seront disponibles prochainement.',
-                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -638,12 +598,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         '• OVH: imap.mail.ovh.net:993',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                      if (isLoading) ...[
-                        const SizedBox(height: 16),
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 8),
-                        const Text('Connecting...', style: TextStyle(color: Colors.blue)),
-                      ],
+                      Visibility(
+                        visible: isLoading,
+                        child: const Column(
+                          children: [
+                            SizedBox(height: 16),
+                            CircularProgressIndicator(),
+                            SizedBox(height: 8),
+                            Text('Connecting...', style: TextStyle(color: Colors.blue)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -692,18 +657,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (result['success']) {
                       Navigator.of(dialogContext).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
                           content: Text('Compte IMAP connecté avec succès!'),
                           backgroundColor: Colors.green,
                         ),
                       );
                       // Refresh integrations dialog to show new account
-                      if (context.mounted) {
-                        _showIntegrationsDialog(context);
-                      }
+                      _showIntegrationsDialog(this.context);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
                         SnackBar(
                           content: Text(result['error'] ?? 'Failed to connect IMAP account'),
                           backgroundColor: Colors.red,
@@ -793,12 +758,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         '• OVH: imap.mail.ovh.net:993',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                      if (isLoading) ...[
-                        const SizedBox(height: 16),
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 8),
-                        const Text('Mise à jour en cours...', style: TextStyle(color: Colors.blue)),
-                      ],
+                      Visibility(
+                        visible: isLoading,
+                        child: const Column(
+                          children: [
+                            SizedBox(height: 16),
+                            CircularProgressIndicator(),
+                            SizedBox(height: 8),
+                            Text('Mise à jour en cours...', style: TextStyle(color: Colors.blue)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -855,17 +825,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (result['success']) {
                       Navigator.of(dialogContext).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
                           content: Text('Compte IMAP mis à jour avec succès!'),
                           backgroundColor: Colors.green,
                         ),
                       );
-                      if (context.mounted) {
-                        _showIntegrationsDialog(context);
-                      }
+                      _showIntegrationsDialog(this.context);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
                         SnackBar(
                           content: Text(result['error'] ?? 'Échec de la mise à jour'),
                           backgroundColor: Colors.red,
@@ -892,52 +862,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatusCard(String title, String url, bool isOnline) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Icon(
-              isOnline ? Icons.check_circle : Icons.error,
-              color: isOnline ? Colors.green : Colors.red,
-              size: 24,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    url,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              isOnline ? 'Online' : 'Offline',
-              style: TextStyle(
-                color: isOnline ? Colors.green : Colors.red,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  
 }
 
 // Auth Wrapper - checks if user is logged in
