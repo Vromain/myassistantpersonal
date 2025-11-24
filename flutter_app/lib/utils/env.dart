@@ -2,6 +2,7 @@
 /// Task: T004 - Create environment configuration file
 ///
 /// Configuration for backend URLs and external services
+library;
 
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -22,15 +23,15 @@ class Env {
   }
 
   // Backend API
-  static String get backendUrl => 'http://$_baseHost:3002';
-  static String get apiBaseUrl => 'http://$_baseHost:3002/api/v1';
+  static String get backendUrl => 'http://$_baseHost:3003';
+  static String get apiBaseUrl => 'http://$_baseHost:3003/api/v1';
 
   // Ollama AI endpoints
   static String get ollamaLocalUrl => 'http://$_baseHost:11434';
   static const String ollamaRemoteUrl = 'http://94.23.49.185:11434';
 
   // OAuth redirect (for Gmail authentication)
-  static const String oauthRedirectUrl = 'http://localhost:3002/api/v1/auth/gmail/callback';
+  static const String oauthRedirectUrl = 'http://localhost:3003/api/v1/auth/gmail/callback';
 
   // App configuration
   static const String appName = 'AI Communication Hub';

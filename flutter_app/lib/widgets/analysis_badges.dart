@@ -54,7 +54,7 @@ class AnalysisBadges extends StatelessWidget {
 
   Widget _buildSentimentBadge(BuildContext context) {
     IconData icon;
-    Color color;
+    MaterialColor color;
     String label;
 
     switch (analysis!.sentiment) {
@@ -88,7 +88,7 @@ class AnalysisBadges extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String label,
-    required Color color,
+    required MaterialColor color,
     required bool showLabel,
   }) {
     if (!showLabel) {

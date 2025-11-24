@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
+import '../models/category.dart';
 import '../models/message.dart';
 import '../models/message_analysis.dart';
-import '../models/category.dart';
 import '../providers/categories_provider.dart';
-import 'priority_badge.dart';
 import 'analysis_badges.dart';
+import 'priority_badge.dart';
 
 /// Message Card Widget
 /// Task: T036 - Create message card widget
@@ -37,7 +38,7 @@ class MessageCard extends ConsumerWidget {
       category = categoriesAsync.maybeWhen(
         data: (categories) => categories.firstWhere(
           (cat) => cat.id == message.categoryId,
-          orElse: () => Category(
+          orElse: () => const Category(
             id: '',
             name: 'Unknown',
             color: '#999999',

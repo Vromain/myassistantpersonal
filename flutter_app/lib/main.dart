@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/login_screen.dart';
-import 'screens/inbox_screen.dart';
-import 'screens/message_detail_screen.dart';
+
 import 'providers/auth_provider.dart';
+import 'screens/inbox_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/message_detail_screen.dart';
 import 'utils/env.dart';
 
 /// Main App Entry Point

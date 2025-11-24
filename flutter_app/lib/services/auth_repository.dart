@@ -1,5 +1,6 @@
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import '../models/auth.dart';
 import '../models/user.dart';
 import '../utils/env.dart';

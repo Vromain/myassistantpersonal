@@ -212,3 +212,9 @@ Future<List<String>> replySuggestions(
   final repository = MessageRepository();
   return await repository.getReplies(messageId);
 }
+
+/// MessageRepository provider for screens needing direct repository access
+@riverpod
+MessageRepository messagesRepository(MessagesRepositoryRef ref) {
+  return MessageRepository();
+}

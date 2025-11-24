@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
-import '../providers/messages_provider.dart';
+
+import '../models/message.dart';
 import '../providers/auth_provider.dart';
+import '../providers/messages_provider.dart';
+import '../widgets/analysis_filter.dart';
 import '../widgets/message_card.dart';
 import '../widgets/priority_filter.dart';
-import '../widgets/analysis_filter.dart';
 import '../widgets/statistics_card.dart';
-import '../models/message.dart';
 
 /// Inbox Screen
 /// Task: T034 - Create inbox screen with message list
@@ -317,8 +318,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       child: CustomScrollView(
         slivers: [
           // Statistics Card at the top
-          SliverToBoxAdapter(
-            child: const StatisticsCard(),
+          const SliverToBoxAdapter(
+            child: StatisticsCard(),
           ),
           // Message list
           SliverPadding(

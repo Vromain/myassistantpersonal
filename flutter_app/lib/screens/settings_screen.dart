@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/settings_service.dart';
+
 import '../models/user_settings.dart';
+import '../services/settings_service.dart';
 
 /// Settings Screen
 /// Tasks: T049-T052 - Create SettingsScreen with backend integration
@@ -250,7 +251,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 12),
             _buildSettingCard(
               title: 'Spam Detection Threshold',
-              subtitle: '${_spamThreshold}% confidence required to mark as spam',
+              subtitle: '$_spamThreshold% confidence required to mark as spam',
               icon: Icons.tune,
               iconColor: Colors.orange,
               child: SizedBox(
@@ -301,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildSettingCard(
               title: 'Response Confidence Threshold',
               subtitle:
-                  '${_responseConfidenceThreshold}% confidence required to auto-send',
+                  '$_responseConfidenceThreshold% confidence required to auto-send',
               icon: Icons.insights,
               iconColor: Colors.purple,
               child: SizedBox(

@@ -1,8 +1,8 @@
 import '../models/message.dart';
 import '../models/message_analysis.dart';
 import 'api_client.dart';
-import 'dio_client.dart';
 import 'database_helper.dart';
+import 'dio_client.dart';
 
 /// Message Repository
 /// Task: T030 - Implement SQLite caching in message_repository.dart
@@ -285,8 +285,8 @@ class MessageRepository {
   /// Task: T031 - Implement analyzeMessage method
   Future<MessageAnalysis> analyzeMessage(String messageId) async {
     try {
-      final response = await _apiClient.post(
-        '/messages/$messageId/analyze',
+      final response = await _apiClient.analyzeMessage(
+        messageId,
         {},
       );
       return MessageAnalysis.fromJson(response['analysis'] as Map<String, dynamic>);
@@ -299,7 +299,7 @@ class MessageRepository {
   /// Task: T032 - Implement getMessageAnalysis method
   Future<MessageAnalysis?> getMessageAnalysis(String messageId) async {
     try {
-      final response = await _apiClient.get('/messages/$messageId/analysis');
+      final response = await _apiClient.getMessageAnalysisRaw(messageId);
       return MessageAnalysis.fromJson(response as Map<String, dynamic>);
     } catch (e) {
       // Return null if analysis doesn't exist (404)

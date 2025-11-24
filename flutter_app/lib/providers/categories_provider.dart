@@ -1,9 +1,10 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/category.dart';
-import '../services/category_repository.dart';
-import '../services/api_client.dart';
-import '../utils/env.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../models/category.dart';
+import '../services/api_client.dart';
+import '../services/category_repository.dart';
+import '../utils/env.dart';
 
 /// Categories Provider
 /// Task: T057 - Create category management screen

@@ -1,7 +1,9 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import '../utils/env.dart';
+
 import '../models/service_health.dart';
+import '../utils/env.dart';
 import 'auth_service.dart';
 
 /// Services Service

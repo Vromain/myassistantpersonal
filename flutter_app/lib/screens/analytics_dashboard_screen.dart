@@ -1,7 +1,8 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+
 import '../services/api_client.dart';
 
 /// Analytics Dashboard Screen
@@ -171,7 +172,7 @@ class _AnalyticsDashboardScreenState
   Widget _buildDateRangeSelector() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Row(
         children: [
           Expanded(
@@ -371,7 +372,7 @@ class _AnalyticsDashboardScreenState
               height: 200,
               child: LineChart(
                 LineChartData(
-                  gridData: FlGridData(show: true),
+                  gridData: const FlGridData(show: true),
                   titlesData: FlTitlesData(
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -562,7 +563,7 @@ class _AnalyticsDashboardScreenState
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

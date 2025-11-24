@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'utils/env.dart';
-import 'services/auth_service.dart';
-import 'services/accounts_service.dart';
-import 'screens/services_screen.dart';
-import 'screens/settings_screen.dart';
 // Note: dart:html import causes issues, using url_launcher instead
 import 'package:url_launcher/url_launcher.dart';
+
+import 'screens/services_screen.dart';
+import 'screens/settings_screen.dart';
+import 'services/accounts_service.dart';
+import 'services/auth_service.dart';
+import 'utils/env.dart';
 
 void main() {
   runApp(const CommunicationHubApp());
@@ -291,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                        )).toList(),
+                        )),
                       const SizedBox(height: 24),
                       const Text(
                         'Ajouter un compte',
@@ -692,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (result['success']) {
                       Navigator.of(dialogContext).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
+                        const SnackBar(
                           content: Text('Compte IMAP connecté avec succès!'),
                           backgroundColor: Colors.green,
                         ),

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '../providers/messages_provider.dart';
-import '../providers/categories_provider.dart';
-import '../models/message.dart';
+
 import '../models/category.dart';
+import '../models/message.dart';
+import '../providers/categories_provider.dart';
+import '../providers/messages_provider.dart';
+import '../services/message_repository.dart';
 import '../widgets/priority_badge.dart';
 import 'compose_reply_screen.dart';
-import '../services/message_repository.dart';
 
 /// Message Detail Screen
 /// Task: T035 - Create message detail screen

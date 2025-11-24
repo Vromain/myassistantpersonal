@@ -46,7 +46,7 @@ final messageStatsProvider = Provider<MessageStats>((ref) {
       final spamCount = messages
           .where((msg) =>
               msg.priorityLevel == PriorityLevel.low &&
-              msg.subject.toLowerCase().contains('spam'))
+              (msg.subject?.toLowerCase() ?? '').contains('spam'))
           .length;
 
       // Count messages needing response (high priority messages)
