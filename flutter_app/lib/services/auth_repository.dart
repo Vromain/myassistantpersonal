@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -47,23 +48,14 @@ class AuthRepository {
 
       // Save token
       await DioClient.saveToken(token);
-
-      // TODO: Fetch user profile
-      // For now, return authenticated state with minimal user
-      final user = User(
-        id: 'temp-id',
-        email: 'user@example.com',
-        preferences: UserPreferences.defaults(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final user = await _fetchUserProfile();
 
       return AuthState.authenticated(
         user: user,
         accessToken: token,
       );
     } catch (e) {
-      print('❌ Sign in error: $e');
+      debugPrint('❌ Sign in error: $e');
       return AuthState(error: e.toString());
     }
   }
@@ -88,22 +80,26 @@ class AuthRepository {
 
       // Save token
       await DioClient.saveToken(token);
-
-      // Create user from Google account
-      final user = User(
-        id: googleUser.id,
-        email: googleUser.email,
-        preferences: UserPreferences.defaults(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      // Try to fetch user profile from backend; fallback to Google account info
+      User user;
+      try {
+        user = await _fetchUserProfile();
+      } catch (_) {
+        user = User(
+          id: googleUser.id,
+          email: googleUser.email,
+          preferences: UserPreferences.defaults(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+      }
 
       return AuthState.authenticated(
         user: user,
         accessToken: token,
       );
     } catch (e) {
-      print('❌ Native sign in error: $e');
+      debugPrint('❌ Native sign in error: $e');
       return AuthState(error: e.toString());
     }
   }
@@ -115,7 +111,7 @@ class AuthRepository {
       await DioClient.clearTokens();
       DioClient.reset();
     } catch (e) {
-      print('❌ Sign out error: $e');
+      debugPrint('❌ Sign out error: $e');
       rethrow;
     }
   }
@@ -134,23 +130,55 @@ class AuthRepository {
         return null;
       }
 
-      // TODO: Fetch user profile from API
-      // For now, return minimal authenticated state
-      final user = User(
-        id: 'restored-user',
-        email: 'user@example.com',
-        preferences: UserPreferences.defaults(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final user = await _fetchUserProfile();
 
       return AuthState.authenticated(
         user: user,
         accessToken: token,
       );
     } catch (e) {
-      print('❌ Restore auth error: $e');
+      debugPrint('❌ Restore auth error: $e');
       return null;
+    }
+  }
+
+  /// Fetch current user profile from backend
+  Future<User> _fetchUserProfile() async {
+    try {
+      final response = await DioClient.instance.get('/users/me');
+      final data = response.data;
+
+      if (data is Map<String, dynamic>) {
+        try {
+          return User.fromJson(data);
+        } catch (_) {
+          // Fallback if preferences or optional fields are missing
+          return User(
+            id: (data['id'] ?? data['_id'] ?? '').toString(),
+            email: (data['email'] ?? '').toString(),
+            subscriptionTier: (data['subscriptionTier'] ?? 'free').toString(),
+            preferences: data['preferences'] is Map<String, dynamic>
+                ? UserPreferences.fromJson(data['preferences'] as Map<String, dynamic>)
+                : UserPreferences.defaults(),
+            connectedAccountIds:
+                (data['connectedAccountIds'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+            lastLoginAt: data['lastLoginAt'] != null
+                ? DateTime.tryParse(data['lastLoginAt'].toString())
+                : null,
+            createdAt: data['createdAt'] != null
+                ? DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now()
+                : DateTime.now(),
+            updatedAt: data['updatedAt'] != null
+                ? DateTime.tryParse(data['updatedAt'].toString()) ?? DateTime.now()
+                : DateTime.now(),
+          );
+        }
+      }
+
+      throw Exception('Invalid user profile response');
+    } catch (e) {
+      debugPrint('❌ Fetch user profile error: $e');
+      rethrow;
     }
   }
 }

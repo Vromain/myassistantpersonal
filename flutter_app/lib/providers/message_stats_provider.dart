@@ -57,12 +57,25 @@ final messageStatsProvider = Provider<MessageStats>((ref) {
       final spamPercentage =
           messages.isNotEmpty ? (spamCount / messages.length) * 100 : 0.0;
 
+      final autoRepliedCount = messages.where((msg) {
+        final meta = msg.metadata;
+        if (meta == null || meta.isEmpty) return false;
+        final value = meta['autoReplied'];
+        if (value == null) return false;
+        if (value is bool) return value;
+        if (value is String) {
+          final v = value.toLowerCase().trim();
+          return v == 'true' || v == '1' || v == 'yes';
+        }
+        return false;
+      }).length;
+
       return MessageStats(
         totalMessages: messages.length,
         spamMessages: spamCount,
         spamPercentage: spamPercentage,
         messagesNeedingResponse: needsResponseCount,
-        autoRepliedMessages: 0, // TODO: Track auto-replied messages in future
+        autoRepliedMessages: autoRepliedCount,
       );
     },
     loading: () => const MessageStats.empty(),

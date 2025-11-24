@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/category.dart';
 import '../models/message.dart';
 import '../providers/categories_provider.dart';
 import '../providers/messages_provider.dart';
+import '../utils/env.dart';
 import '../widgets/priority_badge.dart';
 import 'compose_reply_screen.dart';
 
@@ -244,13 +246,35 @@ class MessageDetailScreen extends ConsumerWidget {
                         subtitle: Text(_formatFileSize(attachment.size)),
                         trailing: IconButton(
                           icon: const Icon(Icons.download),
-                          onPressed: () {
-                            // TODO: Download attachment
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Download coming soon'),
-                              ),
-                            );
+                          onPressed: () async {
+                            final directUrl = attachment.url;
+                            final fallback = attachment.attachmentId != null
+                                ? '${Env.apiBaseUrl}/messages/${message.id}/attachments/${attachment.attachmentId}/download'
+                                : null;
+                            final uriStr = directUrl ?? fallback;
+
+                            if (uriStr == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Pièce jointe indisponible'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final uri = Uri.parse(uriStr);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Impossible d\'ouvrir la pièce jointe'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           },
                         ),
                       ),
