@@ -51,7 +51,7 @@ class _AnalyticsDashboardScreenState
       final apiClient = ref.read(apiClientProvider);
 
       // Load all analytics in parallel
-      final results = await Future.wait([
+      final List<dynamic> results = await Future.wait<dynamic>([
         apiClient.getAnalyticsSummary(
           startDate: dates['start']!.toIso8601String(),
           endDate: dates['end']!.toIso8601String(),

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dio_client.dart';
 
 import '../models/message.dart';
 
@@ -176,3 +178,7 @@ abstract class ApiClient {
     @Query('limit') int? limit,
   });
 }
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(DioClient.instance);
+});
