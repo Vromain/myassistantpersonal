@@ -30,7 +30,7 @@ class AuthRepository {
       }
 
       // Build OAuth URL
-      final authUrl = Uri.parse('${Env.apiBaseUrl}/auth/gmail');
+      final authUrl = Uri.parse('${Env.apiBaseUrl}/auth/gmail?callback=commhub');
 
       // Start OAuth flow
       final result = await FlutterWebAuth2.authenticate(

@@ -37,7 +37,7 @@ class Env {
   static const String appName = 'AI Communication Hub';
 
   // OAuth credentials (placeholder - will be configured)
-  static const String googleClientId = '';
+  static const String googleClientId = '415167970554-3d8c6g2no5qqhunpj9njs7phfh09j5g7.apps.googleusercontent.com';
 
   // Environment flags
   static const bool isDevelopment = true;

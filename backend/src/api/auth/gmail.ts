@@ -37,6 +37,12 @@ router.get('/gmail', (req: Request, res: Response, next) => {
     (req.session as any).oauthState = state;
   }
 
+  // Store optional callback scheme (for FlutterWebAuth2)
+  const callbackScheme = (req.query.callback as string) || undefined;
+  if (callbackScheme && req.session) {
+    (req.session as any).oauthCallback = callbackScheme;
+  }
+
   initiateGmailAuth(req, res, next);
 });
 
@@ -65,9 +71,15 @@ router.get(
       const state = (req.session as any)?.oauthState;
       delete (req.session as any)?.oauthState;
 
-      // For web app: redirect to success page with token
-      const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-      const successUrl = `${redirectUrl}/auth/success?token=${token}${state ? `&state=${state}` : ''}`;
+      // Determine redirect target
+      const callbackScheme = (req.session as any)?.oauthCallback as string | undefined;
+      let successUrl: string;
+      if (callbackScheme) {
+        successUrl = `${callbackScheme}://auth/success?token=${token}${state ? `&state=${state}` : ''}`;
+      } else {
+        const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+        successUrl = `${redirectUrl}/auth/success?token=${token}${state ? `&state=${state}` : ''}`;
+      }
 
       console.log(`✅ Gmail OAuth successful for ${user.email}`);
 

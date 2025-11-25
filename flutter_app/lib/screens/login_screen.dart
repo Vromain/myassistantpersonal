@@ -191,14 +191,7 @@ class LoginScreen extends ConsumerWidget {
       onPressed: () async {
         await ref.read(authProvider.notifier).signInWithGoogle();
       },
-      icon: Image.network(
-        'https://www.google.com/favicon.ico',
-        width: 20,
-        height: 20,
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.login, size: 20);
-        },
-      ),
+      icon: const Icon(Icons.email, size: 20),
       label: const Text('Continue with Gmail'),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
