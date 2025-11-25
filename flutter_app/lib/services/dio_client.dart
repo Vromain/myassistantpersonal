@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/env.dart';
 
 /// Dio Client Factory
@@ -39,7 +40,11 @@ class DioClient {
     return InterceptorsWrapper(
       onRequest: (options, handler) async {
         // Get token from secure storage
-        final token = await _storage.read(key: 'access_token');
+        String? token = await _storage.read(key: 'access_token');
+        if (token == null || token.isEmpty) {
+          final prefs = await SharedPreferences.getInstance();
+          token = prefs.getString('auth_token');
+        }
 
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -174,11 +179,16 @@ class DioClient {
     if (refreshToken != null) {
       await _storage.write(key: 'refresh_token', value: refreshToken);
     }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
   }
 
   /// Get saved token
   static Future<String?> getToken() async {
-    return await _storage.read(key: 'access_token');
+    final token = await _storage.read(key: 'access_token');
+    if (token != null && token.isNotEmpty) return token;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
   }
 
   /// Clear tokens

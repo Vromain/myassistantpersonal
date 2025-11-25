@@ -13,6 +13,7 @@ import syncRoutes from './sync';
 import offlineRoutes from './offline';
 import notificationsRoutes from './notifications';
 import accountsRoutes from './accounts';
+import usersRoutes from './users';
 import servicesRoutes from './services';
 import settingsRoutes from './settings';
 import autoDeleteRoutes from './auto_delete';
@@ -26,6 +27,7 @@ router.use('/auth', localAuthRoutes);
 
 // Mount accounts routes
 router.use('/accounts', accountsRoutes);
+router.use('/users', usersRoutes);
 
 // Mount messages routes
 router.use('/messages', messagesRoutes);

@@ -68,18 +68,14 @@ router.get(
       const token = generateToken(user);
 
       // Get the state for redirect (if any)
-      const state = (req.session as any)?.oauthState;
-      delete (req.session as any)?.oauthState;
+      const state = (req.query.state as string | undefined) || (req.session as any)?.oauthState;
+      if ((req.session as any)?.oauthState) delete (req.session as any).oauthState;
 
       // Determine redirect target
-      const callbackScheme = (req.session as any)?.oauthCallback as string | undefined;
-      let successUrl: string;
-      if (callbackScheme) {
-        successUrl = `${callbackScheme}://auth/success?token=${token}${state ? `&state=${state}` : ''}`;
-      } else {
-        const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-        successUrl = `${redirectUrl}/auth/success?token=${token}${state ? `&state=${state}` : ''}`;
-      }
+      const callbackScheme = (req.query.callback as string | undefined) || ((req.session as any)?.oauthCallback as string | undefined);
+      if ((req.session as any)?.oauthCallback) delete (req.session as any).oauthCallback;
+      const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      const successUrl = `${redirectUrl}/?token=${token}${state ? `&state=${state}` : ''}`;
 
       console.log(`✅ Gmail OAuth successful for ${user.email}`);
 

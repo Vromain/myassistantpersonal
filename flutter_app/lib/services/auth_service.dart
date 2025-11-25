@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../utils/env.dart';
 import 'dio_client.dart';
 
@@ -98,17 +100,16 @@ class AuthService {
   // Login with Google OAuth (cross-platform)
   static Future<Map<String, dynamic>> loginWithGoogle() async {
     try {
-      // Start OAuth flow using backend Gmail endpoint with callback scheme
+      if (kIsWeb) {
+        final url = Uri.parse('${Env.apiBaseUrl}/auth/gmail?state=web');
+        await launchUrl(url, webOnlyWindowName: '_self');
+        return {'success': true};
+      }
+
       final authUrl =
           Uri.parse('${Env.apiBaseUrl}/auth/gmail?callback=commhub');
-
-      // Use FlutterWebAuth2 to authenticate and capture callback URL
       final result = await FlutterWebAuth2.authenticate(
-        url: authUrl.toString(),
-        callbackUrlScheme: 'commhub',
-      );
-
-      // Parse token from callback URL
+          url: authUrl.toString(), callbackUrlScheme: 'commhub');
       final uri = Uri.parse(result);
       final token = uri.queryParameters['token'];
 
@@ -148,6 +149,13 @@ class AuthService {
     } catch (e) {
       return {'success': false, 'error': 'Google authentication error: $e'};
     }
+  }
+
+  // Save token captured from web redirect
+  static Future<void> saveTokenFromWebCallback(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    await DioClient.saveToken(token);
   }
 
   // Save auth data

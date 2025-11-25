@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'providers/auth_provider.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/message_detail_screen.dart';
+import 'services/auth_service.dart';
 import 'utils/env.dart';
 
 /// Main App Entry Point
@@ -15,6 +18,9 @@ import 'utils/env.dart';
 void main() {
   // Validate environment configuration
   Env.validate();
+  if (kIsWeb) {
+    setUrlStrategy(const HashUrlStrategy());
+  }
 
   runApp(
     const ProviderScope(
@@ -46,9 +52,10 @@ class CommunicationHubApp extends ConsumerWidget {
       redirect: (context, state) {
         final isAuthenticated = ref.read(isAuthenticatedProvider);
         final isLoginRoute = state.matchedLocation == '/login';
+        final hasTokenParam = state.uri.queryParameters.containsKey('token');
 
         // Redirect to login if not authenticated
-        if (!isAuthenticated && !isLoginRoute) {
+        if (!isAuthenticated && !isLoginRoute && !hasTokenParam) {
           return '/login';
         }
 
@@ -66,7 +73,7 @@ class CommunicationHubApp extends ConsumerWidget {
         ),
         GoRoute(
           path: '/',
-          builder: (context, state) => const InboxScreen(),
+          builder: (context, state) => RootPage(state: state),
         ),
         GoRoute(
           path: '/message/:id',
@@ -130,5 +137,40 @@ class CommunicationHubApp extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class RootPage extends ConsumerStatefulWidget {
+  final GoRouterState state;
+  const RootPage({super.key, required this.state});
+
+  @override
+  ConsumerState<RootPage> createState() => _RootPageState();
+}
+
+class _RootPageState extends ConsumerState<RootPage> {
+  bool _handledToken = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _captureTokenIfPresent();
+  }
+
+  Future<void> _captureTokenIfPresent() async {
+    final token = widget.state.uri.queryParameters['token'];
+    if (token != null && token.isNotEmpty && !_handledToken) {
+      _handledToken = true;
+      await AuthService.saveTokenFromWebCallback(token);
+      ref.invalidate(authProvider);
+      if (!mounted) return;
+      GoRouter.of(context).go('/');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
+    return isAuthenticated ? const InboxScreen() : const LoginScreen();
   }
 }

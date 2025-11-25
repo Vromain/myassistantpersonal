@@ -154,20 +154,35 @@ ConnectedAccountSchema.methods.encryptTokens = function(tokens: IOAuthTokens): s
  * Decrypt OAuth tokens
  */
 ConnectedAccountSchema.methods.decryptTokens = function(encrypted: string): IOAuthTokens {
-  const parts = encrypted.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const encryptedText = parts[1];
+  try {
+    if (!encrypted || !encrypted.includes(':')) {
+      return { accessToken: '' } as IOAuthTokens;
+    }
 
-  const decipher = crypto.createDecipheriv(
-    ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY.slice(0, 32)),
-    iv
-  );
+    const parts = encrypted.split(':');
+    const ivHex = parts[0];
+    const encryptedText = parts[1];
 
-  let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+    const iv = Buffer.from(ivHex, 'hex');
+    if (iv.length !== 16) {
+      return { accessToken: '' } as IOAuthTokens;
+    }
 
-  return JSON.parse(decrypted);
+    const decipher = crypto.createDecipheriv(
+      ALGORITHM,
+      Buffer.from(ENCRYPTION_KEY.slice(0, 32)),
+      iv
+    );
+
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    const obj = JSON.parse(decrypted);
+    if (!obj.accessToken) obj.accessToken = '';
+    return obj as IOAuthTokens;
+  } catch (_e) {
+    return { accessToken: '' } as IOAuthTokens;
+  }
 };
 
 /**
@@ -176,8 +191,13 @@ ConnectedAccountSchema.methods.decryptTokens = function(encrypted: string): IOAu
 ConnectedAccountSchema.methods.updateTokens = async function(
   tokens: Partial<IOAuthTokens>
 ): Promise<IConnectedAccount> {
-  const currentTokens = this.decryptTokens(this.oauthTokens);
-  const updatedTokens = { ...currentTokens, ...tokens };
+  let currentTokens: IOAuthTokens;
+  try {
+    currentTokens = this.decryptTokens(this.oauthTokens);
+  } catch (_e) {
+    currentTokens = { accessToken: '' } as IOAuthTokens;
+  }
+  const updatedTokens = { ...currentTokens, ...tokens } as IOAuthTokens;
   this.oauthTokens = this.encryptTokens(updatedTokens);
   return this.save();
 };

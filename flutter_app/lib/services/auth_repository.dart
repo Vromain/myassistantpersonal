@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/auth.dart';
 import '../models/user.dart';
@@ -24,7 +25,12 @@ class AuthRepository {
   /// Sign in with Google OAuth
   Future<AuthState> signInWithGoogle() async {
     try {
-      // For web/mobile - use web auth flow
+      if (kIsWeb) {
+        final url = Uri.parse('${Env.apiBaseUrl}/auth/gmail?state=web');
+        await launchUrl(url, webOnlyWindowName: '_self');
+        return const AuthState(error: null);
+      }
+
       if (Env.googleClientId.isEmpty) {
         throw Exception('Google Client ID not configured');
       }

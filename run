@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -e
+
+BACKEND_DIR="backend"
+FRONTEND_DIR="flutter_app"
+BACKEND_PORT=3005
+FRONTEND_PORT=54104
+
+cd "$BACKEND_DIR"
+PORT=$BACKEND_PORT npm run dev &
+BACKEND_PID=$!
+
+cd "../$FRONTEND_DIR"
+flutter run -d web-server --web-port $FRONTEND_PORT --web-hostname localhost &
+FRONTEND_PID=$!
+
+sleep 3
+echo "Backend: http://localhost:$BACKEND_PORT"
+echo "Frontend: http://localhost:$FRONTEND_PORT"
+
+trap 'kill $BACKEND_PID $FRONTEND_PID' INT TERM
+wait

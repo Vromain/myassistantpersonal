@@ -365,10 +365,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         Colors.red,
                         () async {
                           Navigator.of(dialogContext).pop();
-                          final url = Uri.parse('${Env.apiBaseUrl}/auth/gmail');
+                          final url = Uri.parse(
+                              '${Env.apiBaseUrl}/auth/gmail?state=web');
                           if (await canLaunchUrl(url)) {
-                            await launchUrl(url,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(url, webOnlyWindowName: '_self');
                           }
                         },
                       ),
@@ -989,6 +989,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _checkAuthStatus();
+    _captureWebTokenIfPresent();
   }
 
   Future<void> _checkAuthStatus() async {
@@ -997,6 +998,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _isLoggedIn = loggedIn;
       _isLoading = false;
     });
+  }
+
+  Future<void> _captureWebTokenIfPresent() async {
+    final uri = Uri.base;
+    final token = uri.queryParameters['token'];
+    if (token != null && token.isNotEmpty) {
+      await AuthService.saveTokenFromWebCallback(token);
+      setState(() {
+        _isLoggedIn = true;
+      });
+      await launchUrl(Uri.parse('/'), webOnlyWindowName: '_self');
+    }
   }
 
   void _onLoginSuccess() {

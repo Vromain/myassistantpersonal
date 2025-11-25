@@ -55,6 +55,8 @@ dependencies:
   # Navigation
   go_router: ^13.0.0
   http: ^1.6.0
+  flutter_web_plugins:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
