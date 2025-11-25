@@ -100,7 +100,7 @@ class _FilterChip extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       side: BorderSide(
-        color: selected ? chipColor : chipColor.withOpacity(0.3),
+        color: selected ? chipColor : chipColor.withValues(alpha: 0.3),
         width: 1.5,
       ),
     );
