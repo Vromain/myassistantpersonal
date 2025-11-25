@@ -225,6 +225,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           : ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (_errorMessage != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           // Message Management Section
           _buildSectionHeader('Message Management'),
           const SizedBox(height: 16),
@@ -462,7 +484,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: iconColor, size: 24),
@@ -515,10 +537,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
                 const SizedBox(width: 12),

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/env.dart';
 
@@ -76,27 +77,27 @@ class DioClient {
     return InterceptorsWrapper(
       onRequest: (options, handler) {
         if (Env.enableDebugLogging) {
-          print('🌐 REQUEST[${options.method}] => ${options.uri}');
-          print('Headers: ${options.headers}');
+          debugPrint('🌐 REQUEST[${options.method}] => ${options.uri}');
+          debugPrint('Headers: ${options.headers}');
           if (options.data != null) {
-            print('Data: ${options.data}');
+            debugPrint('Data: ${options.data}');
           }
         }
         return handler.next(options);
       },
       onResponse: (response, handler) {
         if (Env.enableDebugLogging) {
-          print('✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
-          print('Data: ${response.data}');
+          debugPrint('✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
+          debugPrint('Data: ${response.data}');
         }
         return handler.next(response);
       },
       onError: (error, handler) {
         if (Env.enableDebugLogging) {
-          print('❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
-          print('Message: ${error.message}');
+          debugPrint('❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
+          debugPrint('Message: ${error.message}');
           if (error.response?.data != null) {
-            print('Data: ${error.response?.data}');
+            debugPrint('Data: ${error.response?.data}');
           }
         }
         return handler.next(error);

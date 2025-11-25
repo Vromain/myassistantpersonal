@@ -511,6 +511,12 @@ class _CategoryFormDialogState extends State<_CategoryFormDialog> {
   }
 
   String _colorToHex(Color color) {
-    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+    final hex = color
+        .toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .substring(2)
+        .toUpperCase();
+    return '#$hex';
   }
 }
