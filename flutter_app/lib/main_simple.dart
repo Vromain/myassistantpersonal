@@ -115,13 +115,13 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Email: ${user?['email'] ?? 'Non connecté'}',
-                     style: const TextStyle(fontSize: 16)),
+                    style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 12),
                 Text('Nom: ${user?['displayName'] ?? 'N/A'}',
-                     style: const TextStyle(fontSize: 16)),
+                    style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 12),
                 Text('Abonnement: ${user?['subscriptionTier'] ?? 'Free'}',
-                     style: const TextStyle(fontSize: 16)),
+                    style: const TextStyle(fontSize: 16)),
               ],
             ),
           ),
@@ -139,7 +139,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showIntegrationsDialog(BuildContext context) async {
     // Fetch connected accounts
     final accountsResult = await AccountsService.getAccounts();
-    final accounts = accountsResult['success'] ? accountsResult['accounts'] as List : [];
+    final accounts =
+        accountsResult['success'] ? accountsResult['accounts'] as List : [];
 
     if (!context.mounted) return;
 
@@ -165,138 +166,196 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Text(
                         'Comptes connectés',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await AuthService.loginWithGoogle();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  result['success'] == true
+                                      ? 'Connexion Google réussie'
+                                      : (result['error'] ??
+                                          'Échec de la connexion Google'),
+                                ),
+                                backgroundColor: result['success'] == true
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            );
+                            if (result['success'] == true) {
+                              Navigator.of(this.context).pop();
+                              _showIntegrationsDialog(this.context);
+                            }
+                          },
+                          icon: const Icon(Icons.g_mobiledata, size: 20),
+                          label: const Text('Connecter un compte Gmail'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       if (accounts.isEmpty)
                         const Text('Aucun compte connecté',
-                                  style: TextStyle(color: Colors.grey))
+                            style: TextStyle(color: Colors.grey))
                       else
                         ...accounts.map((account) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ExpansionTile(
-                            leading: Icon(
-                              account['platform'] == 'gmail'
-                                ? Icons.email
-                                : Icons.settings_ethernet,
-                              color: account['platform'] == 'gmail'
-                                ? Colors.red
-                                : Colors.blue,
-                              size: 32,
-                            ),
-                            title: Text(
-                              account['email'] ?? account['displayName'],
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text('${account['platform']} - ${account['syncStatus']}'),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: () async {
-                                        // Test connection
-                                        final result = await AccountsService.testConnection(
-                                          account['id']
-                                        );
-                                        if (!mounted) return;
-                                        ScaffoldMessenger.of(this.context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                result['success']
-                                                    ? result['message'] ?? 'Connexion réussie!'
-                                                    : result['error'] ?? 'Échec du test'
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ExpansionTile(
+                                leading: Icon(
+                                  account['platform'] == 'gmail'
+                                      ? Icons.email
+                                      : Icons.settings_ethernet,
+                                  color: account['platform'] == 'gmail'
+                                      ? Colors.red
+                                      : Colors.blue,
+                                  size: 32,
+                                ),
+                                title: Text(
+                                  account['email'] ?? account['displayName'],
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                    '${account['platform']} - ${account['syncStatus']}'),
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            // Test connection
+                                            final result = await AccountsService
+                                                .testConnection(account['id']);
+                                            if (!mounted) return;
+                                            ScaffoldMessenger.of(this.context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(result['success']
+                                                    ? result['message'] ??
+                                                        'Connexion réussie!'
+                                                    : result['error'] ??
+                                                        'Échec du test'),
+                                                backgroundColor:
+                                                    result['success']
+                                                        ? Colors.green
+                                                        : Colors.red,
                                               ),
-                                              backgroundColor: result['success']
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                            ),
-                                          );
-                                      },
-                                      icon: const Icon(Icons.wifi_tethering, size: 18),
-                                      label: const Text('Tester'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                    if (account['platform'] == 'imap')
-                                      ElevatedButton.icon(
-                                        onPressed: () {
-                                          Navigator.of(dialogContext).pop();
-                                          _showEditImapDialog(this.context, account);
-                                        },
-                                        icon: const Icon(Icons.edit, size: 18),
-                                        label: const Text('Modifier'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange,
-                                          foregroundColor: Colors.white,
-                                        ),
-                                      ),
-                                    ElevatedButton.icon(
-                                      onPressed: () async {
-                                        // Confirm deletion
-                                        final confirm = await showDialog<bool>(
-                                          context: this.context,
-                                          builder: (BuildContext ctx) {
-                                            return AlertDialog(
-                                              title: const Text('Confirmer la suppression'),
-                                              content: Text(
-                                                'Voulez-vous vraiment déconnecter le compte ${account['email'] ?? account['displayName']} ?'
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                                  child: const Text('Annuler'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                                  child: const Text(
-                                                    'Supprimer',
-                                                    style: TextStyle(color: Colors.red),
-                                                  ),
-                                                ),
-                                              ],
                                             );
                                           },
-                                        );
-
-                                        if (confirm == true) {
-                                          final result = await AccountsService.disconnectAccount(
-                                            account['id']
-                                          );
-                                          if (result['success']) {
-                                            if (!mounted) return;
-                                            Navigator.of(this.context).pop();
-                                            _showIntegrationsDialog(this.context);
-                                            ScaffoldMessenger.of(this.context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Compte déconnecté'),
-                                                backgroundColor: Colors.green,
-                                              ),
+                                          icon: const Icon(Icons.wifi_tethering,
+                                              size: 18),
+                                          label: const Text('Tester'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                        if (account['platform'] == 'imap')
+                                          ElevatedButton.icon(
+                                            onPressed: () {
+                                              Navigator.of(dialogContext).pop();
+                                              _showEditImapDialog(
+                                                  this.context, account);
+                                            },
+                                            icon: const Icon(Icons.edit,
+                                                size: 18),
+                                            label: const Text('Modifier'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.orange,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                          ),
+                                        ElevatedButton.icon(
+                                          onPressed: () async {
+                                            // Confirm deletion
+                                            final confirm =
+                                                await showDialog<bool>(
+                                              context: this.context,
+                                              builder: (BuildContext ctx) {
+                                                return AlertDialog(
+                                                  title: const Text(
+                                                      'Confirmer la suppression'),
+                                                  content: Text(
+                                                      'Voulez-vous vraiment déconnecter le compte ${account['email'] ?? account['displayName']} ?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(ctx)
+                                                              .pop(false),
+                                                      child:
+                                                          const Text('Annuler'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(ctx)
+                                                              .pop(true),
+                                                      child: const Text(
+                                                        'Supprimer',
+                                                        style: TextStyle(
+                                                            color: Colors.red),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
                                             );
-                                          }
-                                        }
-                                      },
-                                      icon: const Icon(Icons.delete, size: 18),
-                                      label: const Text('Supprimer'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
+
+                                            if (confirm == true) {
+                                              final result =
+                                                  await AccountsService
+                                                      .disconnectAccount(
+                                                          account['id']);
+                                              if (result['success']) {
+                                                if (!mounted) return;
+                                                Navigator.of(this.context)
+                                                    .pop();
+                                                _showIntegrationsDialog(
+                                                    this.context);
+                                                ScaffoldMessenger.of(
+                                                        this.context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                        'Compte déconnecté'),
+                                                    backgroundColor:
+                                                        Colors.green,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          icon: const Icon(Icons.delete,
+                                              size: 18),
+                                          label: const Text('Supprimer'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )),
+                            )),
                       const SizedBox(height: 24),
                       const Text(
                         'Ajouter un compte',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
                       _buildIntegrationCard(
@@ -308,7 +367,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Navigator.of(dialogContext).pop();
                           final url = Uri.parse('${Env.apiBaseUrl}/auth/gmail');
                           if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                            await launchUrl(url,
+                                mode: LaunchMode.externalApplication);
                           }
                         },
                       ),
@@ -361,8 +421,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -501,8 +559,42 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.integration_instructions),
                         label: const Text('Voir les intégrations'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 16),
                           textStyle: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: 320,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await AuthService.loginWithGoogle();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  result['success'] == true
+                                      ? 'Compte Google connecté'
+                                      : (result['error'] ??
+                                          'Échec de la connexion Google'),
+                                ),
+                                backgroundColor: result['success'] == true
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            );
+                            if (result['success'] == true) {
+                              _showIntegrationsDialog(this.context);
+                            }
+                          },
+                          icon: const Icon(Icons.g_mobiledata, size: 20),
+                          label: const Text('Se connecter avec Google'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                          ),
                         ),
                       ),
                     ],
@@ -531,7 +623,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final TextEditingController emailController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
     final TextEditingController hostController = TextEditingController();
-    final TextEditingController portController = TextEditingController(text: '993');
+    final TextEditingController portController =
+        TextEditingController(text: '993');
 
     showDialog(
       context: context,
@@ -605,7 +698,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 16),
                             CircularProgressIndicator(),
                             SizedBox(height: 8),
-                            Text('Connecting...', style: TextStyle(color: Colors.blue)),
+                            Text('Connecting...',
+                                style: TextStyle(color: Colors.blue)),
                           ],
                         ),
                       ),
@@ -674,7 +768,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (!mounted) return;
                       ScaffoldMessenger.of(this.context).showSnackBar(
                         SnackBar(
-                          content: Text(result['error'] ?? 'Failed to connect IMAP account'),
+                          content: Text(result['error'] ??
+                              'Failed to connect IMAP account'),
                           backgroundColor: Colors.red,
                           duration: const Duration(seconds: 5),
                         ),
@@ -692,10 +787,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showEditImapDialog(BuildContext context, Map<String, dynamic> account) {
-    final TextEditingController emailController = TextEditingController(text: account['email'] ?? '');
+    final TextEditingController emailController =
+        TextEditingController(text: account['email'] ?? '');
     final TextEditingController passwordController = TextEditingController();
-    final TextEditingController hostController = TextEditingController(text: account['imapConfig']?['host'] ?? '');
-    final TextEditingController portController = TextEditingController(text: (account['imapConfig']?['port'] ?? 993).toString());
+    final TextEditingController hostController =
+        TextEditingController(text: account['imapConfig']?['host'] ?? '');
+    final TextEditingController portController = TextEditingController(
+        text: (account['imapConfig']?['port'] ?? 993).toString());
 
     showDialog(
       context: context,
@@ -725,7 +823,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       TextField(
                         controller: passwordController,
                         decoration: const InputDecoration(
-                          labelText: 'Mot de passe (laisser vide pour ne pas changer)',
+                          labelText:
+                              'Mot de passe (laisser vide pour ne pas changer)',
                           hintText: 'Nouveau mot de passe',
                           prefixIcon: Icon(Icons.lock),
                         ),
@@ -769,7 +868,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             SizedBox(height: 16),
                             CircularProgressIndicator(),
                             SizedBox(height: 8),
-                            Text('Mise à jour en cours...', style: TextStyle(color: Colors.blue)),
+                            Text('Mise à jour en cours...',
+                                style: TextStyle(color: Colors.blue)),
                           ],
                         ),
                       ),
@@ -807,7 +907,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (password.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Veuillez entrer un mot de passe pour mettre à jour le compte'),
+                          content: Text(
+                              'Veuillez entrer un mot de passe pour mettre à jour le compte'),
                           backgroundColor: Colors.orange,
                         ),
                       );
@@ -845,7 +946,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       if (!mounted) return;
                       ScaffoldMessenger.of(this.context).showSnackBar(
                         SnackBar(
-                          content: Text(result['error'] ?? 'Échec de la mise à jour'),
+                          content: Text(
+                              result['error'] ?? 'Échec de la mise à jour'),
                           backgroundColor: Colors.red,
                           duration: const Duration(seconds: 5),
                         ),
@@ -869,8 +971,6 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: Colors.white,
     );
   }
-
-  
 }
 
 // Auth Wrapper - checks if user is logged in
@@ -1087,6 +1187,40 @@ class _LoginPageState extends State<LoginPage> {
                       _isLogin
                           ? 'Pas de compte ? S\'inscrire'
                           : 'Déjà un compte ? Se connecter',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              setState(() {
+                                _isLoading = true;
+                                _errorMessage = null;
+                              });
+                              final result =
+                                  await AuthService.loginWithGoogle();
+                              if (mounted) {
+                                if (result['success'] == true) {
+                                  widget.onLoginSuccess();
+                                } else {
+                                  setState(() {
+                                    _errorMessage = result['error'] ??
+                                        'Échec de l\'authentification Google';
+                                    _isLoading = false;
+                                  });
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.g_mobiledata, size: 20),
+                      label: const Text('Se connecter avec Google'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.all(16),
+                      ),
                     ),
                   ),
                 ],

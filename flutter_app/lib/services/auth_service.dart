@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/env.dart';
+import 'dio_client.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
@@ -30,7 +32,10 @@ class AuthService {
       await _saveAuthData(data['token'], data['user']);
       return {'success': true, 'user': data['user']};
     } else {
-      return {'success': false, 'error': data['message'] ?? 'Registration failed'};
+      return {
+        'success': false,
+        'error': data['message'] ?? 'Registration failed'
+      };
     }
   }
 
@@ -64,6 +69,8 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);
+    await DioClient.clearTokens();
+    DioClient.reset();
   }
 
   // Get stored token
@@ -88,8 +95,64 @@ class AuthService {
     return token != null;
   }
 
+  // Login with Google OAuth (cross-platform)
+  static Future<Map<String, dynamic>> loginWithGoogle() async {
+    try {
+      // Start OAuth flow using backend Gmail endpoint with callback scheme
+      final authUrl =
+          Uri.parse('${Env.apiBaseUrl}/auth/gmail?callback=commhub');
+
+      // Use FlutterWebAuth2 to authenticate and capture callback URL
+      final result = await FlutterWebAuth2.authenticate(
+        url: authUrl.toString(),
+        callbackUrlScheme: 'commhub',
+      );
+
+      // Parse token from callback URL
+      final uri = Uri.parse(result);
+      final token = uri.queryParameters['token'];
+
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Authentication failed: no token returned'
+        };
+      }
+
+      // Save token in SharedPreferences for existing services
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+      // Save token in secure storage for Dio-based clients
+      await DioClient.saveToken(token);
+
+      // Optionally fetch user profile from backend
+      try {
+        final response = await http.get(
+          Uri.parse('${Env.apiBaseUrl}/users/me'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          await prefs.setString(_userKey, jsonEncode(data));
+        }
+      } catch (_) {}
+
+      return {
+        'success': true,
+        'token': token,
+      };
+    } catch (e) {
+      return {'success': false, 'error': 'Google authentication error: $e'};
+    }
+  }
+
   // Save auth data
-  static Future<void> _saveAuthData(String token, Map<String, dynamic> user) async {
+  static Future<void> _saveAuthData(
+      String token, Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userKey, jsonEncode(user));
