@@ -52,7 +52,7 @@ class CommunicationHubApp extends ConsumerWidget {
       redirect: (context, state) {
         final isAuthenticated = ref.read(isAuthenticatedProvider);
         final isLoginRoute = state.matchedLocation == '/login';
-        final hasTokenParam = state.uri.queryParameters.containsKey('token');
+        final hasTokenParam = Uri.base.queryParameters.containsKey('token');
 
         // Redirect to login if not authenticated
         if (!isAuthenticated && !isLoginRoute && !hasTokenParam) {
@@ -158,7 +158,8 @@ class _RootPageState extends ConsumerState<RootPage> {
   }
 
   Future<void> _captureTokenIfPresent() async {
-    final token = widget.state.uri.queryParameters['token'];
+    final token = Uri.base.queryParameters['token'] ??
+        widget.state.uri.queryParameters['token'];
     if (token != null && token.isNotEmpty && !_handledToken) {
       _handledToken = true;
       await AuthService.saveTokenFromWebCallback(token);

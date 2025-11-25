@@ -10,12 +10,10 @@ part 'auth_provider.g.dart';
 
 @riverpod
 class Auth extends _$Auth {
-  late final AuthRepository _authRepository;
+  final AuthRepository _authRepository = AuthRepository();
 
   @override
   Future<AuthState> build() async {
-    _authRepository = AuthRepository();
-
     // Try to restore previous session
     final authState = await _authRepository.restoreAuth();
     return authState ?? AuthState.unauthenticated();
