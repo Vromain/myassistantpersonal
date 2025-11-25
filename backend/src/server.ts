@@ -36,6 +36,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Session support for OAuth
 app.use(session({
   secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'change-this-secret-key',
