@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -40,7 +41,7 @@ class SettingsService {
         throw Exception(data['message'] ?? 'Failed to get settings');
       }
     } catch (e) {
-      print('❌ Error getting settings: $e');
+      debugPrint('❌ Error getting settings: $e');
       rethrow;
     }
   }
@@ -88,7 +89,7 @@ class SettingsService {
         throw Exception(data['message'] ?? 'Failed to update settings');
       }
     } catch (e) {
-      print('❌ Error updating settings: $e');
+      debugPrint('❌ Error updating settings: $e');
       rethrow;
     }
   }

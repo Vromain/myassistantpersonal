@@ -170,10 +170,10 @@ class MessageCard extends ConsumerWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: _hexToColor(category.color).withOpacity(0.15),
+                          color: _hexToColor(category.color).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _hexToColor(category.color).withOpacity(0.3),
+                            color: _hexToColor(category.color).withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),

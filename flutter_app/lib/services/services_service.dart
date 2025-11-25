@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/service_health.dart';
@@ -25,11 +26,11 @@ class ServicesService {
         final data = jsonDecode(response.body);
         return ServicesHealthResponse.fromJson(data);
       } else {
-        print('Error fetching services health: ${response.statusCode}');
+        debugPrint('Error fetching services health: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Exception fetching services health: $e');
+      debugPrint('Exception fetching services health: $e');
       return null;
     }
   }
