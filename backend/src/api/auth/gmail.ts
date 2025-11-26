@@ -80,6 +80,8 @@ router.get(
         : `${redirectUrl}/#/?token=${token}${state ? `&state=${state}` : ''}`;
 
       console.log(`✅ Gmail OAuth successful for ${user.email}`);
+      const sid = (req as any).sessionID || (req.session as any)?.id || 'no-session';
+      console.log(`🟢 Session created: id=${sid} user=${user.email}`);
 
       res.redirect(successUrl);
     } catch (error) {

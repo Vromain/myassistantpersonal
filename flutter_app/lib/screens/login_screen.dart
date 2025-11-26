@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/env.dart';
@@ -32,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await AuthService.saveTokenFromWebCallback(token);
       ref.invalidate(authProvider);
       if (!mounted) return;
-      GoRouter.of(context).go('/');
+      // Stay on login route; router will render Inbox once authenticated
     }
   }
 

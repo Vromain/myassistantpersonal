@@ -175,14 +175,14 @@ class _RootPageState extends ConsumerState<RootPage> {
   }
 
   Future<void> _captureTokenIfPresent() async {
-    final token = Uri.base.queryParameters['token'] ??
-        widget.state.uri.queryParameters['token'];
+    final token = widget.state.uri.queryParameters['token'] ??
+        Uri.base.queryParameters['token'];
     if (token != null && token.isNotEmpty && !_handledToken) {
       _handledToken = true;
       await AuthService.saveTokenFromWebCallback(token);
       ref.invalidate(authProvider);
       if (!mounted) return;
-      GoRouter.of(context).go('/');
+      // Stay on current route; router redirect allows token param
     }
   }
 
