@@ -114,10 +114,14 @@ async function handleGoogleOAuthCallback(
     if (!user) {
       user = User.create({
         email,
+        displayName: profile.displayName || email,
         subscriptionTier: 'free'
       });
       await user.save();
       console.log(`✅ Created new user: ${email}`);
+    } else if (!user.displayName && profile.displayName) {
+      user.displayName = profile.displayName;
+      await user.save();
     }
 
     // Check if user can add more accounts
