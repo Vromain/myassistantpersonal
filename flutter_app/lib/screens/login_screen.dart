@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../utils/env.dart';
@@ -17,10 +18,15 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _handledToken = false;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _submitting = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('LoginScreen loaded');
     _captureTokenIfPresent();
   }
 
@@ -76,28 +82,90 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 48),
 
-                // Features list
-                _buildFeatureItem(
-                  context,
-                  icon: Icons.inbox,
-                  title: 'Unified Inbox',
-                  description: 'All your messages in one place',
+                const SizedBox(height: 24),
+
+                Text(
+                  'Connexion locale',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const SizedBox(height: 16),
-                _buildFeatureItem(
-                  context,
-                  icon: Icons.auto_awesome,
-                  title: 'AI Priority Scoring',
-                  description: 'Never miss important messages',
+                // Email/Password form
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'you@example.com',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [AutofillHints.password],
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_error != null)
+                      Text(
+                        _error!,
+                        style: TextStyle(color: Colors.red.shade700),
+                        textAlign: TextAlign.center,
+                      ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: _submitting
+                          ? null
+                          : () async {
+                              final email = _emailController.text.trim();
+                              final password = _passwordController.text;
+                              if (email.isEmpty || password.isEmpty) {
+                                setState(() =>
+                                    _error = 'Email et mot de passe requis');
+                                return;
+                              }
+                              setState(() {
+                                _submitting = true;
+                                _error = null;
+                              });
+                              final result = await AuthService.login(
+                                  email: email, password: password);
+                              if (!mounted) return;
+                              if (result['success'] == true) {
+                                ref.invalidate(authProvider);
+                                if (!context.mounted) return;
+                                context.go('/');
+                              } else {
+                                if (!mounted) return;
+                                setState(() {
+                                  _error =
+                                      result['error'] ?? 'Échec de connexion';
+                                  _submitting = false;
+                                });
+                              }
+                            },
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Se connecter'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                _buildFeatureItem(
-                  context,
-                  icon: Icons.reply,
-                  title: 'Smart Replies',
-                  description: 'AI-powered response suggestions',
-                ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 24),
 
                 // Google Sign In button
                 authState.when(
@@ -158,6 +226,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey,
                       ),
+                ),
+
+                const SizedBox(height: 24),
+                _buildFeatureItem(
+                  context,
+                  icon: Icons.inbox,
+                  title: 'Unified Inbox',
+                  description: 'All your messages in one place',
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureItem(
+                  context,
+                  icon: Icons.auto_awesome,
+                  title: 'AI Priority Scoring',
+                  description: 'Never miss important messages',
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureItem(
+                  context,
+                  icon: Icons.reply,
+                  title: 'Smart Replies',
+                  description: 'AI-powered response suggestions',
                 ),
               ],
             ),

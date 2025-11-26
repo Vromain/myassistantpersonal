@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { User, IUser } from '../../models/user';
+import { User } from '../../models/user';
 import { generateToken } from '../../middleware/auth';
 import bcrypt from 'bcrypt';
 
@@ -65,26 +65,19 @@ router.post('/register', async (req: Request, res: Response) => {
       password: hashedPassword,
       displayName: displayName || email.split('@')[0],
       subscriptionTier: 'free',
-      connectedAccounts: [],
       preferences: {
-        notifications: {
-          enabled: true,
-          email: true,
-          push: false
-        },
         quietHours: {
           enabled: false,
-          start: '22:00',
-          end: '08:00'
+          startTime: '22:00',
+          endTime: '07:00',
+          timezone: 'UTC'
         },
-        dataRetention: {
-          messages: 365,
-          analytics: 180
-        }
+        notificationRules: [],
+        dataRetentionDays: 90
       }
     });
+    await user.save();
 
-    // Generate JWT token
     const token = generateToken(user);
 
     console.log(`✅ User registered: ${user.email}`);
@@ -94,7 +87,7 @@ router.post('/register', async (req: Request, res: Response) => {
       message: 'User registered successfully',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         displayName: user.displayName,
         subscriptionTier: user.subscriptionTier
@@ -128,7 +121,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Find user by email (explicitly select password field since it's excluded by default)
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password') as IUser | null;
+    const user = await User.findOneWithPassword(email.toLowerCase());
 
     if (!user) {
       res.status(401).json({
@@ -148,7 +141,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     // Compare password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password!);
 
     if (!isPasswordValid) {
       res.status(401).json({
@@ -168,11 +161,11 @@ router.post('/login', async (req: Request, res: Response) => {
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
+        id: user.id,
         email: user.email,
         displayName: user.displayName,
         subscriptionTier: user.subscriptionTier,
-        connectedAccountsCount: user.connectedAccounts.length
+        connectedAccountsCount: user.connectedAccounts?.length ?? 0
       }
     });
   } catch (error: any) {
@@ -180,6 +173,46 @@ router.post('/login', async (req: Request, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to login',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/v1/auth/set-password
+ * Dev-only: Set or update a user's password by email
+ */
+router.post('/set-password', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'email and password are required'
+      });
+      return;
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'User not found'
+      });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    console.log(`✅ Password set for user: ${user.email}`);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('❌ Error setting password:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to set password',
       details: error.message
     });
   }

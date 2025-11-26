@@ -106,6 +106,16 @@ export class User implements IUser {
     return repo.findOne({ where: params as any });
   }
 
+  static async findOneWithPassword(email: string): Promise<User | null> {
+    const ds = db.getConnection();
+    const repo = ds!.getRepository(User);
+    return repo
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('LOWER(user.email) = LOWER(:email)', { email })
+      .getOne();
+  }
+
   static create(data: Partial<User>): User {
     const u = new User();
     Object.assign(u, data);

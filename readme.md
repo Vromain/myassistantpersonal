@@ -175,9 +175,5 @@ cd flutter_app && flutter pub get && flutter pub run build_runner build && flutt
 
 **MVP Target**: Ready for production testing 🎉
 
-
-- MYSQL_HOST (par défaut localhost )
-- MYSQL_PORT (par défaut 3306 )
-- MYSQL_USER (par défaut root )
-- MYSQL_PASSWORD
-- MYSQL_DATABASE (par défaut commhub )
+- Email: angelzeke@gmail.com
+- Mot de passe: DevTest123!
