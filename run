@@ -1,22 +1,31 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "[run] Please run this script with bash: bash run or ./run"
+  exit 1
+fi
 
 BACKEND_DIR="backend"
 FRONTEND_DIR="flutter_app"
 BACKEND_PORT=3005
 FRONTEND_PORT=54104
 
+if ! command -v npm >/dev/null 2>&1; then echo "[run] npm not found in PATH"; exit 1; fi
+if ! command -v flutter >/dev/null 2>&1; then echo "[run] flutter not found in PATH"; echo "[run] Ensure Flutter is installed and added to PATH"; exit 1; fi
+
 cd "$BACKEND_DIR"
+echo "[run] Starting backend on port $BACKEND_PORT..."
 PORT=$BACKEND_PORT npm run dev &
 BACKEND_PID=$!
 
 cd "../$FRONTEND_DIR"
-flutter run -d web-server --web-port $FRONTEND_PORT --web-hostname localhost &
+echo "[run] Starting Flutter web on http://localhost:$FRONTEND_PORT ..."
+flutter run -d web-server --web-port "$FRONTEND_PORT" --web-hostname localhost &
 FRONTEND_PID=$!
 
 sleep 3
-echo "Backend: http://localhost:$BACKEND_PORT"
-echo "Frontend: http://localhost:$FRONTEND_PORT"
+echo "[run] Backend:  http://localhost:$BACKEND_PORT"
+echo "[run] Frontend: http://localhost:$FRONTEND_PORT"
 
-trap 'kill $BACKEND_PID $FRONTEND_PID' INT TERM
+trap 'echo "[run] Stopping..."; kill "$BACKEND_PID" "$FRONTEND_PID"' INT TERM
 wait

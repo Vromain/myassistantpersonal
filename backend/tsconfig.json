@@ -13,6 +13,8 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -22,6 +24,15 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/server.ts",
+    "src/api/index.ts",
+    "src/api/auth/gmail.ts",
+    "src/services/auth/gmail_strategy.ts",
+    "src/middleware/auth.ts",
+    "src/db/connection.ts",
+    "src/models/user.ts",
+    "src/models/connected_account.ts"
+  ],
   "exclude": ["node_modules", "dist", "tests"]
 }

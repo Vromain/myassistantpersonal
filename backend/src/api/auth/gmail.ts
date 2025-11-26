@@ -107,8 +107,8 @@ router.post('/gmail/disconnect', authenticate, async (req: AuthRequest, res: Res
 
     // Find the connected account
     const account = await ConnectedAccount.findOne({
-      _id: accountId,
-      userId,
+      id: accountId,
+      userId: userId!,
       platform: 'gmail'
     });
 
@@ -123,10 +123,7 @@ router.post('/gmail/disconnect', authenticate, async (req: AuthRequest, res: Res
     // Delete the account
     await account.deleteOne();
 
-    // Remove from user's connectedAccounts array
-    await req.user?.updateOne({
-      $pull: { connectedAccounts: accountId }
-    });
+    
 
     console.log(`✅ Disconnected Gmail account ${accountId} for user ${userId}`);
 
@@ -156,9 +153,9 @@ router.get('/gmail/status', authenticate, async (req: AuthRequest, res: Response
 
     // Find all Gmail accounts for this user
     const gmailAccounts = await ConnectedAccount.find({
-      userId,
+      userId: userId!,
       platform: 'gmail'
-    }).select('-oauthTokens'); // Don't send encrypted tokens to client
+    });
 
     const accounts = gmailAccounts.map(account => {
       // T083: Determine if account needs re-authentication
@@ -167,7 +164,7 @@ router.get('/gmail/status', authenticate, async (req: AuthRequest, res: Response
          account.errorMessage?.includes('Invalid or revoked'));
 
       return {
-        id: account._id,
+        id: account.id,
         email: account.email,
         displayName: account.displayName,
         syncStatus: account.syncStatus,
@@ -218,8 +215,8 @@ router.post('/gmail/refresh', authenticate, async (req: AuthRequest, res: Respon
 
     // Verify account belongs to user
     const account = await ConnectedAccount.findOne({
-      _id: accountId,
-      userId: req.userId,
+      id: accountId,
+      userId: req.userId!,
       platform: 'gmail'
     });
 
@@ -280,8 +277,8 @@ router.post('/gmail/test', authenticate, async (req: AuthRequest, res: Response)
 
     // Verify account belongs to user
     const account = await ConnectedAccount.findOne({
-      _id: accountId,
-      userId: req.userId,
+      id: accountId,
+      userId: req.userId!,
       platform: 'gmail'
     });
 

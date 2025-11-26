@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -5,13 +6,10 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import passport from 'passport';
-import mongoose from 'mongoose';
 import { db } from './db/connection';
 import { configureGmailStrategy } from './services/auth/gmail_strategy';
 import { ollamaClient } from './services/ollama_client';
-import { syncScheduler } from './services/sync_scheduler';
-import { emailProcessingCron } from './services/email_processing_cron';
-import { Category } from './models/category';
+// Removed Mongo-dependent schedulers and seeding during MySQL migration
 import apiRoutes from './api';
 
 // Load environment variables
@@ -92,7 +90,7 @@ app.get('/health', (_req: Request, res: Response) => {
     uptime: process.uptime(),
     environment: process.env.NODE_ENV,
     services: {
-      database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      database: db.isReady() ? 'connected' : 'disconnected',
       ai: {
         available: aiStatus.available,
         degradedMode: aiStatus.degradedMode,
@@ -151,11 +149,10 @@ async function startServer() {
   try {
     console.log('🚀 Starting AI-Powered Communication Hub...\n');
 
-    // Connect to MongoDB
-    console.log('📦 Connecting to MongoDB...');
+    console.log('📦 Connecting to MySQL...');
     await db.connect();
     const dbHealth = await db.healthCheck();
-    console.log(`✅ MongoDB connected: ${dbHealth.database}\n`);
+    console.log(`✅ MySQL connected: ${dbHealth.database}\n`);
 
     // Configure Passport strategies
     console.log('🔐 Configuring OAuth strategies...');
@@ -173,21 +170,7 @@ async function startServer() {
       console.warn('   AI features will use fallback values\n');
     }
 
-    // Seed predefined categories
-    console.log('📂 Seeding predefined categories...');
-    await (Category as any).seedPredefined();
-
-    // Start sync scheduler
-    console.log('🔄 Starting sync scheduler...');
-    syncScheduler.start();
-    const schedulerStatus = syncScheduler.getStatus();
-    console.log(`✅ Sync scheduler running (${schedulerStatus.scheduledAccounts} accounts)\n`);
-
-    // Start email processing cron job (every 15 minutes)
-    console.log('⏰ Starting email processing cron job...');
-    emailProcessingCron.start('*/15 * * * *'); // Every 15 minutes
-    const cronStatus = emailProcessingCron.getStatus();
-    console.log(`✅ Email processing cron ${cronStatus.isRunning ? 'started' : 'failed'}\n`);
+    
 
     // Start Express server
     app.listen(PORT, () => {
@@ -209,7 +192,6 @@ async function startServer() {
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n⚠️  Shutting down gracefully...');
-  await syncScheduler.shutdown();
   await db.disconnect();
   console.log('✅ Shutdown complete');
   process.exit(0);
@@ -217,7 +199,6 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   console.log('\n⚠️  Shutting down gracefully...');
-  await syncScheduler.shutdown();
   await db.disconnect();
   console.log('✅ Shutdown complete');
   process.exit(0);

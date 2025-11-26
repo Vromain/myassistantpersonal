@@ -1,17 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 import '../utils/env.dart';
 
 /// Login Screen
 /// Task: T033 - Create login screen
 /// Reference: specs/001-ai-communication-hub/plan.md
 
-class LoginScreen extends ConsumerWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  bool _handledToken = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _captureTokenIfPresent();
+  }
+
+  Future<void> _captureTokenIfPresent() async {
+    final token = Uri.base.queryParameters['token'];
+    if (token != null && token.isNotEmpty && !_handledToken) {
+      _handledToken = true;
+      await AuthService.saveTokenFromWebCallback(token);
+      ref.invalidate(authProvider);
+      if (!mounted) return;
+      GoRouter.of(context).go('/');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
     return Scaffold(

@@ -81,9 +81,9 @@ export const configureGmailStrategy = (): void => {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await User.findById(id);
-      done(null, user);
+      done(null, user as any);
     } catch (error) {
-      done(error);
+      done(error as any);
     }
   });
 
@@ -112,55 +112,44 @@ async function handleGoogleOAuthCallback(
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create new user
-      user = new User({
+      user = User.create({
         email,
-        subscriptionTier: 'free',
-        preferences: {
-          quietHours: { enabled: false, start: '22:00', end: '08:00' },
-          notificationRules: { email: true, push: true, sms: false },
-          autoReplyEnabled: false,
-          dataRetention: 90
-        },
-        connectedAccounts: []
+        subscriptionTier: 'free'
       });
-
       await user.save();
       console.log(`✅ Created new user: ${email}`);
     }
 
     // Check if user can add more accounts
-    if (!(user as any).canAddAccount()) {
-      const maxAccounts = user.subscriptionTier === 'premium' ? 10 : 5;
-      done(
-        new Error(
-          `Account limit reached. ${user.subscriptionTier} tier allows max ${maxAccounts} accounts.`
-        )
-      );
-      return;
+    {
+      const canAdd = await (user as any).canAddAccount();
+      if (!canAdd) {
+        const maxAccounts = user.subscriptionTier === 'premium' ? 10 : 5;
+        done(new Error(`Account limit reached. ${user.subscriptionTier} tier allows max ${maxAccounts} accounts.`));
+        return;
+      }
     }
 
     // Find or create connected account for Gmail
     let connectedAccount = await ConnectedAccount.findOne({
-      userId: user._id,
+      userId: (user as any).id,
       platform: 'gmail',
       email
     });
 
     if (!connectedAccount) {
-      // Create new connected account
-      connectedAccount = new ConnectedAccount({
-        userId: user._id,
+      connectedAccount = ConnectedAccount.create({
+        userId: (user as any).id,
         platform: 'gmail',
         email,
         displayName: profile.displayName || email,
         syncStatus: 'active',
         connectionHealth: 'healthy',
-        oauthTokens: '',  // Will be set by updateTokens
+        oauthTokens: '',
         syncSettings: {
           enabled: true,
-          frequency: 300,  // 5 minutes
-          syncFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)  // Last 30 days
+          frequency: 300,
+          syncFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         }
       });
 
@@ -181,11 +170,7 @@ async function handleGoogleOAuthCallback(
     connectedAccount.lastSync = new Date();
     await connectedAccount.save();
 
-    // Add account to user if not already present
-    if (!user.connectedAccounts.includes(connectedAccount._id as any)) {
-      user.connectedAccounts.push(connectedAccount._id as any);
-      await user.save();
-    }
+    
 
     // Update last login
     await (user as any).updateLastLogin();

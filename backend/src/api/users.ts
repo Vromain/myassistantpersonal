@@ -11,7 +11,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
     displayName: user.displayName,
     subscriptionTier: user.subscriptionTier,
     preferences: user.preferences,
-    connectedAccountIds: (user.connectedAccounts || []).map((id: any) => id.toString()),
+    connectedAccountIds: (user.connectedAccounts || []).map((acc: any) => acc.id?.toString?.() || acc?.toString?.() || ''),
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

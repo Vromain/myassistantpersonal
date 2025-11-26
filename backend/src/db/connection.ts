@@ -1,25 +1,23 @@
-import mongoose from 'mongoose';
+import { DataSource } from 'typeorm';
+import { User } from '../models/user';
+import { ConnectedAccount } from '../models/connected_account';
 
-/**
- * MongoDB Connection Setup
- * Task: T009 - Set up MongoDB connection with connection pooling and error handling
- */
-
-interface ConnectionOptions {
-  maxPoolSize?: number;
-  minPoolSize?: number;
-  serverSelectionTimeoutMS?: number;
-  socketTimeoutMS?: number;
+interface MySQLConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
 }
+
+interface ConnectionOptions {}
 
 class DatabaseConnection {
   private static instance: DatabaseConnection;
-  private connectionString: string;
+  private dataSource?: DataSource;
   private isConnected: boolean = false;
 
-  private constructor() {
-    this.connectionString = process.env.MONGODB_URI || 'mongodb://localhost:27017/commhub';
-  }
+  private constructor() {}
 
   public static getInstance(): DatabaseConnection {
     if (!DatabaseConnection.instance) {
@@ -30,42 +28,38 @@ class DatabaseConnection {
 
   public async connect(options?: ConnectionOptions): Promise<void> {
     if (this.isConnected) {
-      console.log('📦 MongoDB: Already connected');
+      console.log('📦 MySQL: Already connected');
       return;
     }
 
-    const defaultOptions: ConnectionOptions = {
-      maxPoolSize: 10,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      ...options
+    const cfg: MySQLConfig = {
+      host: process.env.MYSQL_HOST || 'localhost',
+      port: parseInt(process.env.MYSQL_PORT || '3306'),
+      username: process.env.MYSQL_USER || 'root',
+      password: process.env.MYSQL_PASSWORD || '',
+      database: process.env.MYSQL_DATABASE || 'commhub'
     };
 
     try {
-      await mongoose.connect(this.connectionString, defaultOptions);
+      this.dataSource = new DataSource({
+        type: 'mysql',
+        host: cfg.host,
+        port: cfg.port,
+        username: cfg.username,
+        password: cfg.password,
+        database: cfg.database,
+        synchronize: true,
+        logging: false,
+        entities: [User as any, ConnectedAccount as any]
+      });
+
+      await this.dataSource.initialize();
       this.isConnected = true;
-      console.log('✅ MongoDB: Connected successfully');
-      console.log(`📍 MongoDB: Database - ${mongoose.connection.db?.databaseName || 'unknown'}`);
-
-      // Handle connection events
-      mongoose.connection.on('error', (error) => {
-        console.error('❌ MongoDB: Connection error:', error);
-        this.isConnected = false;
-      });
-
-      mongoose.connection.on('disconnected', () => {
-        console.warn('⚠️  MongoDB: Disconnected');
-        this.isConnected = false;
-      });
-
-      mongoose.connection.on('reconnected', () => {
-        console.log('🔄 MongoDB: Reconnected');
-        this.isConnected = true;
-      });
+      console.log('✅ MySQL: Connected successfully');
+      console.log(`📍 MySQL: Database - ${cfg.database}`);
 
     } catch (error) {
-      console.error('❌ MongoDB: Connection failed:', error);
+      console.error('❌ MySQL: Connection failed:', error);
       this.isConnected = false;
       throw error;
     }
@@ -77,21 +71,21 @@ class DatabaseConnection {
     }
 
     try {
-      await mongoose.disconnect();
+      await this.dataSource?.destroy();
       this.isConnected = false;
-      console.log('👋 MongoDB: Disconnected successfully');
+      console.log('👋 MySQL: Disconnected successfully');
     } catch (error) {
-      console.error('❌ MongoDB: Disconnect error:', error);
+      console.error('❌ MySQL: Disconnect error:', error);
       throw error;
     }
   }
 
   public getConnection() {
-    return mongoose.connection;
+    return this.dataSource;
   }
 
   public isReady(): boolean {
-    return this.isConnected && mongoose.connection.readyState === 1;
+    return !!this.dataSource && this.isConnected;
   }
 
   public async healthCheck(): Promise<{
@@ -101,8 +95,8 @@ class DatabaseConnection {
   }> {
     return {
       status: this.isReady() ? 'connected' : 'disconnected',
-      database: mongoose.connection.db?.databaseName || 'unknown',
-      readyState: mongoose.connection.readyState
+      database: (this.dataSource as any)?.options?.database || 'unknown',
+      readyState: this.isReady() ? 1 : 0
     };
   }
 }

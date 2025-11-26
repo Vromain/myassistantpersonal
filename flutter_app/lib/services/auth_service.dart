@@ -156,6 +156,20 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await DioClient.saveToken(token);
+
+    try {
+      final response = await http.get(
+        Uri.parse('${Env.apiBaseUrl}/users/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await prefs.setString(_userKey, jsonEncode(data));
+      }
+    } catch (_) {}
   }
 
   // Save auth data
