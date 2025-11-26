@@ -179,7 +179,7 @@ async function handleGoogleOAuthCallback(
     // Update last login
     await (user as any).updateLastLogin();
 
-    console.log(`✅ Gmail OAuth successful for ${email}`);
+    
 
     // Pass user to done callback
     done(null, user);

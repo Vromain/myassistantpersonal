@@ -52,10 +52,16 @@ class CommunicationHubApp extends ConsumerWidget {
     return GoRouter(
       initialLocation: '/',
       redirect: (context, state) {
-        final isAuthenticated = ref.read(isAuthenticatedProvider);
+        final authAsync = ref.read(authProvider);
+        final isAuthenticated = authAsync.valueOrNull?.isAuthenticated ?? false;
+        final isLoading = authAsync.isLoading;
         final isLoginRoute = state.matchedLocation == '/login';
         final hasTokenParam = state.uri.queryParameters.containsKey('token') ||
             Uri.base.queryParameters.containsKey('token');
+
+        if (isLoading) {
+          return null;
+        }
 
         // Redirect to login if not authenticated
         if (!isAuthenticated && !isLoginRoute && !hasTokenParam) {

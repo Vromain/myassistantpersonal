@@ -53,23 +53,16 @@ class DioClient {
         return handler.next(options);
       },
       onError: (error, handler) async {
-        // Handle token expiration
         if (error.response?.statusCode == 401) {
-          // Try to refresh token
-          final refreshToken = await _storage.read(key: 'refresh_token');
+          final data = error.response?.data;
+          final message = data is Map ? (data['message'] ?? data['error'])?.toString() : null;
 
-          if (refreshToken != null) {
-            try {
-              // TODO: Implement token refresh logic
-              // For now, just pass the error through
-              return handler.next(error);
-            } catch (e) {
-              // Refresh failed, clear tokens and pass error
-              await _storage.delete(key: 'access_token');
-              await _storage.delete(key: 'refresh_token');
-              return handler.next(error);
-            }
-          }
+          await _storage.delete(key: 'access_token');
+          await _storage.delete(key: 'refresh_token');
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('auth_token');
+
+          return handler.next(error);
         }
 
         return handler.next(error);
