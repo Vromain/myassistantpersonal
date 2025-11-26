@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
+import 'models/auth.dart';
 import 'providers/auth_provider.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/integrations_screen.dart';
@@ -49,15 +50,29 @@ class CommunicationHubApp extends ConsumerWidget {
   }
 
   GoRouter _createRouter(WidgetRef ref) {
+    final refresh = _GoRouterRefreshNotifier();
+    ref.listen<AsyncValue<AuthState>>(authProvider, (prev, next) {
+      refresh.trigger();
+    });
     return GoRouter(
+      refreshListenable: refresh,
       initialLocation: '/',
       redirect: (context, state) {
         final authAsync = ref.read(authProvider);
         final isAuthenticated = authAsync.valueOrNull?.isAuthenticated ?? false;
         final isLoading = authAsync.isLoading;
         final isLoginRoute = state.matchedLocation == '/login';
+        String? tokenFromFragment;
+        final frag = Uri.base.fragment;
+        if (frag.isNotEmpty) {
+          try {
+            final fragUri = Uri.parse(frag.startsWith('/') ? frag : '/$frag');
+            tokenFromFragment = fragUri.queryParameters['token'];
+          } catch (_) {}
+        }
         final hasTokenParam = state.uri.queryParameters.containsKey('token') ||
-            Uri.base.queryParameters.containsKey('token');
+            Uri.base.queryParameters.containsKey('token') ||
+            (tokenFromFragment != null);
 
         if (isLoading) {
           return null;
@@ -157,6 +172,10 @@ class CommunicationHubApp extends ConsumerWidget {
   }
 }
 
+class _GoRouterRefreshNotifier extends ChangeNotifier {
+  void trigger() => notifyListeners();
+}
+
 class RootPage extends ConsumerStatefulWidget {
   final GoRouterState state;
   const RootPage({super.key, required this.state});
@@ -175,8 +194,17 @@ class _RootPageState extends ConsumerState<RootPage> {
   }
 
   Future<void> _captureTokenIfPresent() async {
-    final token = widget.state.uri.queryParameters['token'] ??
+    String? token = widget.state.uri.queryParameters['token'] ??
         Uri.base.queryParameters['token'];
+    if (token == null || token.isEmpty) {
+      final frag = Uri.base.fragment;
+      if (frag.isNotEmpty) {
+        try {
+          final fragUri = Uri.parse(frag.startsWith('/') ? frag : '/$frag');
+          token = fragUri.queryParameters['token'];
+        } catch (_) {}
+      }
+    }
     if (token != null && token.isNotEmpty && !_handledToken) {
       _handledToken = true;
       await AuthService.saveTokenFromWebCallback(token);
