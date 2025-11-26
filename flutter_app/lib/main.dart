@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 
 import 'providers/auth_provider.dart';
 import 'screens/inbox_screen.dart';
+import 'screens/integrations_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/message_detail_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
 import 'utils/env.dart';
 
@@ -74,6 +76,14 @@ class CommunicationHubApp extends ConsumerWidget {
         GoRoute(
           path: '/',
           builder: (context, state) => RootPage(state: state),
+        ),
+        GoRoute(
+          path: '/integrations',
+          builder: (context, state) => const IntegrationsScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
         ),
         GoRoute(
           path: '/message/:id',

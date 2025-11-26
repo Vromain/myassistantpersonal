@@ -200,6 +200,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 case 'sync':
                   await ref.read(messagesProvider.notifier).sync();
                   break;
+                case 'integrations':
+                  if (context.mounted) context.push('/integrations');
+                  break;
+                case 'profile':
+                  if (context.mounted) context.push('/profile');
+                  break;
                 case 'logout':
                   await ref.read(authProvider.notifier).signOut();
                   if (context.mounted) {
@@ -216,6 +222,26 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     Icon(Icons.sync),
                     SizedBox(width: 12),
                     Text('Sync now'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'integrations',
+                child: Row(
+                  children: [
+                    Icon(Icons.extension),
+                    SizedBox(width: 12),
+                    Text('Integrations'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person),
+                    SizedBox(width: 12),
+                    Text('Profile'),
                   ],
                 ),
               ),
