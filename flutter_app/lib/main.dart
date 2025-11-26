@@ -54,7 +54,8 @@ class CommunicationHubApp extends ConsumerWidget {
       redirect: (context, state) {
         final isAuthenticated = ref.read(isAuthenticatedProvider);
         final isLoginRoute = state.matchedLocation == '/login';
-        final hasTokenParam = Uri.base.queryParameters.containsKey('token');
+        final hasTokenParam = state.uri.queryParameters.containsKey('token') ||
+            Uri.base.queryParameters.containsKey('token');
 
         // Redirect to login if not authenticated
         if (!isAuthenticated && !isLoginRoute && !hasTokenParam) {

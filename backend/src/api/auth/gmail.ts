@@ -75,7 +75,9 @@ router.get(
       const callbackScheme = (req.query.callback as string | undefined) || ((req.session as any)?.oauthCallback as string | undefined);
       if ((req.session as any)?.oauthCallback) delete (req.session as any).oauthCallback;
       const redirectUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-      const successUrl = `${redirectUrl}/?token=${token}${state ? `&state=${state}` : ''}`;
+      const successUrl = callbackScheme
+        ? `${callbackScheme}://callback?token=${token}${state ? `&state=${state}` : ''}`
+        : `${redirectUrl}/#/?token=${token}${state ? `&state=${state}` : ''}`;
 
       console.log(`✅ Gmail OAuth successful for ${user.email}`);
 
