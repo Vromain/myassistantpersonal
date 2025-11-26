@@ -55,14 +55,25 @@ class DioClient {
       onError: (error, handler) async {
         if (error.response?.statusCode == 401) {
           final data = error.response?.data;
-          final message = data is Map ? (data['message'] ?? data['error'])?.toString() : null;
+          final message = data is Map
+              ? (data['message'] ?? data['error'])?.toString()
+              : null;
 
           await _storage.delete(key: 'access_token');
           await _storage.delete(key: 'refresh_token');
           final prefs = await SharedPreferences.getInstance();
           await prefs.remove('auth_token');
 
-          return handler.next(error);
+          final friendly = message ?? 'Unauthorized. Please log in again.';
+          return handler.next(
+            DioException(
+              requestOptions: error.requestOptions,
+              response: error.response,
+              type: error.type,
+              error: friendly,
+              message: friendly,
+            ),
+          );
         }
 
         return handler.next(error);
@@ -85,14 +96,16 @@ class DioClient {
       },
       onResponse: (response, handler) {
         if (Env.enableDebugLogging) {
-          debugPrint('✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
+          debugPrint(
+              '✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
           debugPrint('Data: ${response.data}');
         }
         return handler.next(response);
       },
       onError: (error, handler) {
         if (Env.enableDebugLogging) {
-          debugPrint('❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
+          debugPrint(
+              '❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
           debugPrint('Message: ${error.message}');
           if (error.response?.data != null) {
             debugPrint('Data: ${error.response?.data}');
@@ -111,7 +124,8 @@ class DioClient {
 
         if (error.type == DioExceptionType.connectionTimeout ||
             error.type == DioExceptionType.receiveTimeout) {
-          message = 'Connection timeout. Please check your internet connection.';
+          message =
+              'Connection timeout. Please check your internet connection.';
         } else if (error.type == DioExceptionType.badResponse) {
           final statusCode = error.response?.statusCode;
           switch (statusCode) {
@@ -131,7 +145,8 @@ class DioClient {
               message = 'Server error. Please try again later.';
               break;
             default:
-              message = 'Error: ${error.response?.statusMessage ?? 'Unknown error'}';
+              message =
+                  'Error: ${error.response?.statusMessage ?? 'Unknown error'}';
           }
 
           // Try to extract error message from response
