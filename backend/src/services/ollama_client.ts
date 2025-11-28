@@ -48,13 +48,13 @@ class OllamaClient {
 
     this.localClient = axios.create({
       baseURL: localUrl,
-      timeout: 5000, // T047: 5-second timeout for analysis operations
+      timeout: 30000,
       headers: { 'Content-Type': 'application/json' }
     });
 
     this.remoteClient = axios.create({
       baseURL: remoteUrl,
-      timeout: 5000, // T047: 5-second timeout for analysis operations
+      timeout: 30000,
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -138,17 +138,50 @@ class OllamaClient {
   ): Promise<string> {
     try {
       const client = this.getClient();
+      let response: any;
 
-      const response = await client.post<OllamaResponse>('/api/chat', {
-        model: this.model,
-        messages,
-        stream: false,
-        options: {
-          temperature: options?.temperature || 0.7,
-          top_p: options?.top_p || 0.9,
-          num_predict: options?.max_tokens || 1000
+      try {
+        response = await client.post<OllamaResponse>('/api/chat', {
+          model: this.model,
+          messages,
+          stream: false,
+          options: {
+            temperature: options?.temperature || 0.7,
+            top_p: options?.top_p || 0.9,
+            num_predict: options?.max_tokens || 1000
+          }
+        });
+      } catch (err: any) {
+        // Fallback for servers that don't support /api/chat (404) or model missing
+        if (err?.response?.status === 404 || err?.response?.status === 400) {
+          // Ensure model is available on server
+          try {
+            const tags = await client.get('/api/tags');
+            const hasModel = (tags.data?.models || []).some((m: any) => m.name === this.model);
+            if (!hasModel) {
+              console.log(`⬇️  Ollama: Pulling model ${this.model}...`);
+              await client.post('/api/pull', { name: this.model, stream: false });
+            }
+          } catch (pullErr: any) {
+            console.warn('⚠️  Ollama: Model availability check/pull failed:', pullErr?.message || pullErr);
+          }
+
+          // Retry using /api/generate
+          const prompt = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+          const gen = await client.post('/api/generate', {
+            model: this.model,
+            prompt,
+            stream: false,
+            options: {
+              temperature: options?.temperature || 0.7,
+              top_p: options?.top_p || 0.9,
+              num_predict: options?.max_tokens || 1000
+            }
+          });
+          return gen.data?.response || '';
         }
-      });
+        throw err;
+      }
 
       // Success - reset failure counter
       if (this.failureCount > 0) {

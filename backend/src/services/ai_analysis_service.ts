@@ -2,6 +2,7 @@ import { IMessage } from '../models/message';
 import { MessageAnalysis, IMessageAnalysis } from '../models/message_analysis';
 import { ollamaClient } from './ollama_client';
 import mongoose from 'mongoose';
+import { getMessageSqlRepo } from '../models/message_sql';
 
 /**
  * AI Analysis Service
@@ -74,6 +75,17 @@ export class AIAnalysisService {
           },
           { new: true }
         );
+        try {
+          const repo = await getMessageSqlRepo();
+          const sqlMsg = await repo.findOne({ where: { accountId: (message as any).accountId, externalId: (message as any).externalId } });
+          if (sqlMsg) {
+            sqlMsg.isSpam = analysis.isSpam;
+            sqlMsg.spamProbability = analysis.spamProbability;
+            await repo.save(sqlMsg);
+          }
+        } catch (e2) {
+          console.warn('⚠️  AI: Failed to update SQL message spam fields:', e2);
+        }
       } catch (e) {
         console.warn('⚠️  AI: Failed to update message spam fields:', e);
       }

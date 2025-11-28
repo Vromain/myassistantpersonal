@@ -72,6 +72,14 @@ export class MessageSql {
   @Index()
   archivedAt?: Date | null;
 
+  @Column({ type: 'boolean', default: false })
+  @Index()
+  isSpam!: boolean;
+
+  @Column({ type: 'int', default: 0 })
+  @Index()
+  spamProbability!: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

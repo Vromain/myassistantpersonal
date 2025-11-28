@@ -1,5 +1,6 @@
 import OllamaClient from './ollama_client';
 import { spamAssassinClient } from './spamassassin_client';
+import { getMessageSqlRepo } from '../models/message_sql';
 import { MessageAnalysis, IMessageAnalysis, SentimentType } from '../models/message_analysis';
 import { Message, IMessage } from '../models/message';
 import mongoose from 'mongoose';
@@ -461,6 +462,17 @@ Respond in valid JSON format only:
             spamProbability: spamResult.probability,
           }
         });
+        try {
+          const repo = await getMessageSqlRepo();
+          const sqlMsg = await repo.findOne({ where: { accountId: (message as any).accountId, externalId: (message as any).externalId } });
+          if (sqlMsg) {
+            sqlMsg.isSpam = spamResult.isSpam;
+            sqlMsg.spamProbability = spamResult.probability;
+            await repo.save(sqlMsg);
+          }
+        } catch (e2) {
+          console.warn('⚠️  MessageAnalysis: Failed to update SQL message spam fields:', e2);
+        }
       } catch (e) {
         console.warn('⚠️  MessageAnalysis: Failed to update Message spam fields:', e);
       }

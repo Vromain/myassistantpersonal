@@ -145,6 +145,15 @@ export class AutoDeleteService {
                 body: m.content
               } as any);
 
+              // Update SQL record with spam flags
+              try {
+                m.isSpam = spam.isSpam;
+                m.spamProbability = spam.probability;
+                await repo.save(m);
+              } catch (e2) {
+                // non-fatal
+              }
+
               if (spam.probability >= settings.spamThreshold) {
                 const ok = await this.moveToTrashImap(m.accountId, m.externalId);
                 if (ok) {
