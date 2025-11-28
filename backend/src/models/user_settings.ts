@@ -14,7 +14,7 @@ export interface IAutoReplyConditions {
 }
 
 export interface IUserSettings extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId: string;
   autoDeleteSpamEnabled: boolean;
   autoSendRepliesEnabled: boolean;
   autoReplyConditions: IAutoReplyConditions;
@@ -53,10 +53,9 @@ const AutoReplyConditionsSchema = new Schema<IAutoReplyConditions>({
 
 const UserSettingsSchema = new Schema<IUserSettings>({
   userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: true,
-    unique: true,  // One settings document per user
+    unique: true,
     index: true
   },
   autoDeleteSpamEnabled: {

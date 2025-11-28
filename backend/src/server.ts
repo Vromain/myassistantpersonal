@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import 'reflect-metadata';
 import express, { Application, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -13,6 +14,7 @@ import { ollamaClient } from './services/ollama_client';
 // Removed Mongo-dependent schedulers and seeding during MySQL migration
 import apiRoutes from './api';
 import { syncScheduler } from './services/sync_scheduler';
+import { emailProcessingCron } from './services/email_processing_cron';
 
 // Load environment variables
 dotenv.config();
@@ -185,6 +187,20 @@ async function startServer() {
       console.log('✅ Sync scheduler started');
     } catch (e) {
       console.warn('⚠️  Failed to start sync scheduler', e);
+    }
+
+    // Start email processing cron (AI analysis / auto-reply / auto-delete)
+    try {
+      emailProcessingCron.start();
+      console.log('✅ Email processing cron started');
+      // Trigger an immediate processing run for verification
+      emailProcessingCron.processAllUsers().then((stats) => {
+        console.log('📊 Email processing cron initial run stats:', stats);
+      }).catch((err) => {
+        console.error('❌ Email processing cron initial run error:', err);
+      });
+    } catch (e) {
+      console.warn('⚠️  Failed to start email processing cron', e);
     }
 
     // Start Express server

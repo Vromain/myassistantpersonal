@@ -53,7 +53,7 @@ export class AutoDeleteService {
 
       // Get user settings
       const settings = await UserSettings.findOne({
-        userId: new mongoose.Types.ObjectId(userId)
+        userId: userId
       });
 
       if (!settings) {
@@ -72,7 +72,7 @@ export class AutoDeleteService {
 
       // Find messages that are marked as spam and not yet trashed
       const spamMessages = await Message.find({
-        userId: new mongoose.Types.ObjectId(userId),
+        userId: userId,
         isTrashed: false
       }).lean();
 
@@ -260,7 +260,7 @@ export class AutoDeleteService {
   ): Promise<AutoDeleteLogEntry[]> {
     try {
       const messages = await Message.find({
-        userId: new mongoose.Types.ObjectId(userId),
+        userId: userId,
         autoDeleted: true,
         isTrashed: true
       })

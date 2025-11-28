@@ -156,7 +156,7 @@ export class EmailProcessingCronService {
 
     // Get user settings
     const settings = await UserSettings.findOne({
-      userId: new mongoose.Types.ObjectId(userId)
+      userId: userId
     });
 
     if (!settings) {

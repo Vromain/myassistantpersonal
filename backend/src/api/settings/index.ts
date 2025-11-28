@@ -29,12 +29,12 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const userId = req.userId!;
 
     // Find or create user settings
-    let settings = await UserSettings.findOne({ userId: new mongoose.Types.ObjectId(userId) });
+    let settings = await UserSettings.findOne({ userId });
 
     if (!settings) {
       // Create default settings for new user
       settings = new UserSettings({
-        userId: new mongoose.Types.ObjectId(userId),
+        userId,
         autoDeleteSpamEnabled: false,
         autoSendRepliesEnabled: false,
         spamThreshold: 80,
@@ -51,7 +51,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     }
 
     res.json({
-      userId: settings.userId.toString(),
+      userId: settings.userId,
       autoDeleteSpamEnabled: settings.autoDeleteSpamEnabled,
       autoSendRepliesEnabled: settings.autoSendRepliesEnabled,
       spamThreshold: settings.spamThreshold,
@@ -115,12 +115,12 @@ router.put(
       } = req.body;
 
       // Find or create settings
-      let settings = await UserSettings.findOne({ userId: new mongoose.Types.ObjectId(userId) });
+      let settings = await UserSettings.findOne({ userId });
 
       if (!settings) {
         // Create new settings
         settings = new UserSettings({
-          userId: new mongoose.Types.ObjectId(userId),
+          userId,
           autoDeleteSpamEnabled: autoDeleteSpamEnabled ?? false,
           autoSendRepliesEnabled: autoSendRepliesEnabled ?? false,
           spamThreshold: spamThreshold ?? 80,
