@@ -22,6 +22,9 @@ class MainScreen extends ConsumerWidget {
                 case 'integrations':
                   if (context.mounted) context.push('/integrations');
                   break;
+                case 'settings':
+                  if (context.mounted) context.push('/settings');
+                  break;
                 case 'profile':
                   if (context.mounted) context.push('/profile');
                   break;
@@ -42,6 +45,12 @@ class MainScreen extends ConsumerWidget {
                 value: 'integrations',
                 child: Row(
                   children: [Icon(Icons.extension), SizedBox(width: 12), Text('Integrations')],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [Icon(Icons.settings), SizedBox(width: 12), Text('Paramètres')],
                 ),
               ),
               PopupMenuItem(
@@ -89,13 +98,18 @@ class MainScreen extends ConsumerWidget {
                   title: 'Intégrations',
                   onTap: () => context.push('/integrations'),
                 ),
-                _NavCard(
-                  icon: Icons.person,
-                  title: 'Profil',
-                  onTap: () => context.push('/profile'),
-                ),
-              ],
-            ),
+              _NavCard(
+                icon: Icons.person,
+                title: 'Profil',
+                onTap: () => context.push('/profile'),
+              ),
+              _NavCard(
+                icon: Icons.settings,
+                title: 'Paramètres',
+                onTap: () => context.push('/settings'),
+              ),
+            ],
+          ),
           ],
         ),
       ),
@@ -144,4 +158,3 @@ class _NavCard extends StatelessWidget {
     );
   }
 }
-

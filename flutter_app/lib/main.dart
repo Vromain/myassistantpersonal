@@ -12,6 +12,7 @@ import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/message_detail_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/auth_service.dart';
 import 'utils/env.dart';
 
@@ -115,6 +116,10 @@ class CommunicationHubApp extends ConsumerWidget {
         GoRoute(
           path: '/profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => const SettingsScreen(),
         ),
         GoRoute(
           path: '/message/:id',

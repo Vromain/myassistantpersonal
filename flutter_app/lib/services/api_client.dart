@@ -178,6 +178,13 @@ abstract class ApiClient {
     @Query('endDate') String? endDate,
     @Query('limit') int? limit,
   });
+
+  // User settings endpoints
+  @GET('/settings')
+  Future<dynamic> getUserSettings();
+
+  @PUT('/settings')
+  Future<dynamic> updateUserSettings(@Body() Map<String, dynamic> body);
 }
 
 final apiClientProvider = Provider<ApiClient>((ref) {

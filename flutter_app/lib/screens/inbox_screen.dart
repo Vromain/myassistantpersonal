@@ -69,6 +69,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Paramètres',
+            onPressed: () => context.push('/settings'),
+          ),
           // Search button
           IconButton(
             icon: const Icon(Icons.search),
