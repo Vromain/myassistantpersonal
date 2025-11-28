@@ -40,6 +40,8 @@ export interface IMessage extends Document {
   isTrashed: boolean;  // T062 - Auto-delete tracking
   trashedAt?: Date;    // T062 - Auto-delete tracking
   autoDeleted: boolean;  // T063 - Auto-delete tracking
+  isSpam: boolean;
+  spamProbability: number;
   createdAt: Date;
   updatedAt: Date;
 
@@ -150,6 +152,18 @@ const MessageSchema = new Schema<IMessage>({
   autoDeleted: {
     type: Boolean,
     default: false,
+    index: true
+  },
+  isSpam: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  spamProbability: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
     index: true
   }
 }, {

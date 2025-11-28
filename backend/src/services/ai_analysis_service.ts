@@ -62,6 +62,22 @@ export class AIAnalysisService {
 
       await messageAnalysis.save();
 
+      // Update message document with spam indicators
+      try {
+        await (mongoose.model('Message') as any).findByIdAndUpdate(
+          message._id,
+          {
+            $set: {
+              isSpam: analysis.isSpam,
+              spamProbability: analysis.spamProbability,
+            }
+          },
+          { new: true }
+        );
+      } catch (e) {
+        console.warn('⚠️  AI: Failed to update message spam fields:', e);
+      }
+
       console.log(`✅ AI: Analysis completed for message ${message._id}`);
       console.log(`   - Spam: ${analysis.isSpam} (${analysis.spamProbability}%)`);
       console.log(`   - Needs reply: ${analysis.needsResponse} (${analysis.responseConfidence}%)`);

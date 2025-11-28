@@ -453,6 +453,18 @@ Respond in valid JSON format only:
         throw new Error('Failed to create/update analysis document');
       }
 
+      // Update message document spam indicators for quick access
+      try {
+        await Message.findByIdAndUpdate(message._id, {
+          $set: {
+            isSpam: spamResult.isSpam,
+            spamProbability: spamResult.probability,
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️  MessageAnalysis: Failed to update Message spam fields:', e);
+      }
+
       console.log(`✅ MessageAnalysis: Analysis complete for message ${messageId}`);
       return analysis;
 
