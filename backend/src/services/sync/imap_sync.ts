@@ -34,8 +34,11 @@ class ImapSyncService {
       const connection = await imapSimple.connect(config);
       await connection.openBox('INBOX');
 
-      const sinceDate = account.syncSettings.syncFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const searchCriteria = ['ALL', ['SINCE', sinceDate.toUTCString()]];
+      const rawSince = account.syncSettings.syncFrom as any;
+      const fallbackSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const sinceDate = rawSince ? new Date(rawSince) : fallbackSince;
+      const validSince = isNaN(sinceDate.getTime()) ? fallbackSince : sinceDate;
+      const searchCriteria = ['ALL', ['SINCE', validSince]];
       const fetchOptions = { bodies: ['HEADER', 'TEXT'], struct: true };
 
       const repo = await getMessageSqlRepo();
