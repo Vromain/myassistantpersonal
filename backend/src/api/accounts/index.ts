@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, AuthRequest } from '../../middleware/auth';
 import { ConnectedAccount } from '../../models/connected_account';
-import { User, IUser } from '../../models/user';
+import { User } from '../../models/user';
+import { db } from '../../db/connection';
 
 /**
  * Accounts Routes
@@ -29,7 +30,7 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
     }
 
     // Get user
-    const user = await User.findById(userId) as IUser | null;
+    const user = await User.findById(userId as string);
     if (!user) {
       res.status(404).json({
         error: 'Not Found',
@@ -80,7 +81,7 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
 
     // Check if account already exists
     let connectedAccount = await ConnectedAccount.findOne({
-      userId: user._id,
+      userId: user.id,
       platform: 'imap',
       email
     });
@@ -105,16 +106,13 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
       await connectedAccount.save();
       console.log(`✅ Updated IMAP account for ${email}`);
     } else {
-      // Create new connected account
-      // Encrypt tokens first before creating the account
-      const tempAccount = new ConnectedAccount({
-        userId: user._id,
+      const tempAccount = ConnectedAccount.create({
+        userId: user.id,
         platform: 'imap',
         email,
         displayName: email,
         syncStatus: 'active',
         connectionHealth: 'healthy',
-        oauthTokens: '', // Temporary, will be encrypted below
         imapConfig: {
           host,
           port,
@@ -122,25 +120,18 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
         },
         syncSettings: {
           enabled: true,
-          frequency: 300, // 5 minutes
-          syncFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+          frequency: 300,
+          syncFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         }
       });
 
-      // Encrypt credentials using the method
       const encryptedTokens = (tempAccount as any).encryptTokens({
-        accessToken: password, // Store password as "accessToken" (will be encrypted)
+        accessToken: password,
         refreshToken: undefined
       });
 
       tempAccount.oauthTokens = encryptedTokens;
       connectedAccount = await tempAccount.save();
-
-      // Add account to user if not already present
-      if (!user.connectedAccounts.includes(connectedAccount._id as any)) {
-        user.connectedAccounts.push(connectedAccount._id as any);
-        await user.save();
-      }
 
       console.log(`✅ Created new IMAP account for ${email}`);
     }
@@ -149,7 +140,7 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
       success: true,
       message: 'IMAP account connected successfully',
       account: {
-        id: connectedAccount._id,
+        id: connectedAccount.id,
         email: connectedAccount.email,
         platform: connectedAccount.platform,
         displayName: connectedAccount.displayName,
@@ -174,15 +165,16 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
  */
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.userId;
+    const userId = req.userId as string;
 
-    const accounts = await ConnectedAccount.find({ userId })
-      .select('-oauthTokens'); // Don't send encrypted tokens
+    const ds = db.getConnection();
+    const repo = ds!.getRepository(ConnectedAccount);
+    const accounts = await repo.find({ where: { userId } });
 
     res.json({
       success: true,
       accounts: accounts.map(account => ({
-        id: account._id,
+        id: account.id,
         platform: account.platform,
         email: account.email,
         displayName: account.displayName,
@@ -190,7 +182,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
         connectionHealth: account.connectionHealth,
         lastSync: account.lastSync,
         syncSettings: account.syncSettings,
-        imapConfig: (account as any).imapConfig
+        imapConfig: account.imapConfig
       })),
       total: accounts.length
     });
@@ -210,10 +202,10 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.delete('/:accountId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { accountId } = req.params;
-    const userId = req.userId;
+    const userId = req.userId as string;
 
     const account = await ConnectedAccount.findOne({
-      _id: accountId,
+      id: accountId,
       userId
     });
 
@@ -226,12 +218,6 @@ router.delete('/:accountId', authenticate, async (req: AuthRequest, res: Respons
     }
 
     await account.deleteOne();
-
-    // Remove from user's connectedAccounts array
-    await User.updateOne(
-      { _id: userId },
-      { $pull: { connectedAccounts: accountId } }
-    );
 
     console.log(`✅ Disconnected account ${accountId} for user ${userId}`);
 
@@ -256,10 +242,9 @@ router.delete('/:accountId', authenticate, async (req: AuthRequest, res: Respons
 router.post('/:accountId/test', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { accountId } = req.params;
-    const userId = req.userId;
+    const userId = req.userId as string;
 
-    // Find the account
-    const account = await ConnectedAccount.findOne({ _id: accountId, userId });
+    const account = await ConnectedAccount.findOne({ id: accountId, userId });
     if (!account) {
       res.status(404).json({
         error: 'Not Found',
@@ -328,7 +313,7 @@ router.put('/:accountId', authenticate, async (req: AuthRequest, res: Response) 
   try {
     const { accountId } = req.params;
     const { email, password, host, port = 993, secure = true } = req.body;
-    const userId = req.userId;
+    const userId = req.userId as string;
 
     // Validate required fields
     if (!email || !password || !host) {
@@ -340,7 +325,7 @@ router.put('/:accountId', authenticate, async (req: AuthRequest, res: Response) 
     }
 
     // Find the account
-    const account = await ConnectedAccount.findOne({ _id: accountId, userId });
+    const account = await ConnectedAccount.findOne({ id: accountId, userId });
     if (!account) {
       res.status(404).json({
         error: 'Not Found',
@@ -406,7 +391,7 @@ router.put('/:accountId', authenticate, async (req: AuthRequest, res: Response) 
       success: true,
       message: 'Account updated successfully',
       account: {
-        id: account._id,
+        id: account.id,
         email: account.email,
         platform: account.platform,
         syncStatus: account.syncStatus

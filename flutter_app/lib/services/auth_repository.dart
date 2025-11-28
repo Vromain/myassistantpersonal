@@ -177,15 +177,58 @@ class AuthRepository {
         try {
           return User.fromJson(data);
         } catch (_) {
-          // Fallback if preferences or optional fields are missing
+          // Fallback tolerant to backend preference shape
+          final prefsMap = data['preferences'] as Map<String, dynamic>?;
+
+          // Quiet hours normalization
+          QuietHours quietHours = const QuietHours(
+            enabled: false,
+            start: '22:00',
+            end: '08:00',
+          );
+          if (prefsMap != null && prefsMap['quietHours'] is Map) {
+            final q = prefsMap['quietHours'] as Map;
+            final enabled = q['enabled'] == true;
+            final start = (q['start'] ?? q['startTime'] ?? '22:00').toString();
+            final end = (q['end'] ?? q['endTime'] ?? '08:00').toString();
+            quietHours = QuietHours(enabled: enabled, start: start, end: end);
+          }
+
+          // Notification rules normalization
+          NotificationRules rules = const NotificationRules(
+            email: true,
+            push: true,
+            sms: false,
+          );
+          if (prefsMap != null && prefsMap['notificationRules'] is Map) {
+            final r = prefsMap['notificationRules'] as Map;
+            rules = NotificationRules(
+              email: r['email'] == true,
+              push: r['push'] == true,
+              sms: r['sms'] == true,
+            );
+          }
+
+          // Data retention normalization
+          final retention = prefsMap != null
+              ? (prefsMap['dataRetention'] ??
+                  prefsMap['dataRetentionDays'] ??
+                  90)
+              : 90;
+
+          final userPrefs = UserPreferences(
+            quietHours: quietHours,
+            notificationRules: rules,
+            dataRetention: (retention is int)
+                ? retention
+                : int.tryParse(retention.toString()) ?? 90,
+          );
+
           return User(
             id: (data['id'] ?? data['_id'] ?? '').toString(),
             email: (data['email'] ?? '').toString(),
             subscriptionTier: (data['subscriptionTier'] ?? 'free').toString(),
-            preferences: data['preferences'] is Map<String, dynamic>
-                ? UserPreferences.fromJson(
-                    data['preferences'] as Map<String, dynamic>)
-                : UserPreferences.defaults(),
+            preferences: userPrefs,
             connectedAccountIds: (data['connectedAccountIds'] as List?)
                     ?.map((e) => e.toString())
                     .toList() ??

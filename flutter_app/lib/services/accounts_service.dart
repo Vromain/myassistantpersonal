@@ -67,6 +67,21 @@ class AccountsService {
           'accounts': data['accounts'],
           'total': data['total']
         };
+      } else if (response.statusCode == 404) {
+        final meResp = await http.get(
+          Uri.parse('${Env.apiBaseUrl}/users/me'),
+          headers: headers,
+        );
+        Map<String, dynamic> meData = {};
+        try {
+          meData = jsonDecode(meResp.body) as Map<String, dynamic>;
+        } catch (_) {}
+        final ids = (meData['connectedAccountIds'] as List?) ?? const [];
+        return {
+          'success': true,
+          'accounts': const [],
+          'total': ids.length,
+        };
       } else {
         return {
           'success': false,
