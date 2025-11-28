@@ -9,6 +9,7 @@ import 'providers/auth_provider.dart';
 import 'screens/inbox_screen.dart';
 import 'screens/integrations_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_screen.dart';
 import 'screens/message_detail_screen.dart';
 import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
@@ -83,7 +84,7 @@ class CommunicationHubApp extends ConsumerWidget {
           return '/login';
         }
 
-        // Redirect to inbox if authenticated and on login page
+        // Redirect to main if authenticated and on login page
         if (isAuthenticated && isLoginRoute) {
           return '/';
         }
@@ -98,6 +99,14 @@ class CommunicationHubApp extends ConsumerWidget {
         GoRoute(
           path: '/',
           builder: (context, state) => RootPage(state: state),
+        ),
+        GoRoute(
+          path: '/main',
+          builder: (context, state) => const MainScreen(),
+        ),
+        GoRoute(
+          path: '/inbox',
+          builder: (context, state) => const InboxScreen(),
         ),
         GoRoute(
           path: '/integrations',
@@ -217,6 +226,6 @@ class _RootPageState extends ConsumerState<RootPage> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
-    return isAuthenticated ? const InboxScreen() : const LoginScreen();
+    return isAuthenticated ? const MainScreen() : const LoginScreen();
   }
 }

@@ -60,6 +60,7 @@ class AuthService {
     if (response.statusCode == 200) {
       // Save token and user data
       await _saveAuthData(data['token'], data['user']);
+      await DioClient.saveToken(data['token']);
       return {'success': true, 'user': data['user']};
     } else {
       return {'success': false, 'error': data['message'] ?? 'Login failed'};
@@ -178,6 +179,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userKey, jsonEncode(user));
+    await DioClient.saveToken(token);
   }
 
   // Get authorization header

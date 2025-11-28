@@ -13,14 +13,7 @@ import 'dio_client.dart';
 /// Handles OAuth flows and authentication state
 
 class AuthRepository {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [
-      'email',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.modify',
-      'https://www.googleapis.com/auth/gmail.send',
-    ],
-  );
+  GoogleSignIn? _googleSignIn;
 
   /// Sign in with Google OAuth
   Future<AuthState> signInWithGoogle() async {
@@ -36,7 +29,8 @@ class AuthRepository {
       }
 
       // Build OAuth URL
-      final authUrl = Uri.parse('${Env.apiBaseUrl}/auth/gmail?callback=commhub');
+      final authUrl =
+          Uri.parse('${Env.apiBaseUrl}/auth/gmail?callback=commhub');
 
       // Start OAuth flow
       final result = await FlutterWebAuth2.authenticate(
@@ -69,7 +63,19 @@ class AuthRepository {
   /// Sign in with Google (native - for mobile)
   Future<AuthState> signInWithGoogleNative() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (kIsWeb) {
+        return const AuthState(
+            error: 'Native Google sign-in not supported on web');
+      }
+      _googleSignIn ??= GoogleSignIn(
+        scopes: [
+          'email',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/gmail.send',
+        ],
+      );
+      final GoogleSignInAccount? googleUser = await _googleSignIn!.signIn();
 
       if (googleUser == null) {
         // User cancelled
@@ -113,7 +119,7 @@ class AuthRepository {
   /// Sign out
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
+      await _googleSignIn?.signOut();
       await DioClient.clearTokens();
       DioClient.reset();
     } catch (e) {
@@ -148,6 +154,9 @@ class AuthRepository {
     }
   }
 
+  /// Public wrapper to fetch current user profile
+  Future<User> fetchUserProfile() => _fetchUserProfile();
+
   /// Fetch current user profile from backend
   Future<User> _fetchUserProfile() async {
     try {
@@ -164,18 +173,23 @@ class AuthRepository {
             email: (data['email'] ?? '').toString(),
             subscriptionTier: (data['subscriptionTier'] ?? 'free').toString(),
             preferences: data['preferences'] is Map<String, dynamic>
-                ? UserPreferences.fromJson(data['preferences'] as Map<String, dynamic>)
+                ? UserPreferences.fromJson(
+                    data['preferences'] as Map<String, dynamic>)
                 : UserPreferences.defaults(),
-            connectedAccountIds:
-                (data['connectedAccountIds'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+            connectedAccountIds: (data['connectedAccountIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                const [],
             lastLoginAt: data['lastLoginAt'] != null
                 ? DateTime.tryParse(data['lastLoginAt'].toString())
                 : null,
             createdAt: data['createdAt'] != null
-                ? DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now()
+                ? DateTime.tryParse(data['createdAt'].toString()) ??
+                    DateTime.now()
                 : DateTime.now(),
             updatedAt: data['updatedAt'] != null
-                ? DateTime.tryParse(data['updatedAt'].toString()) ?? DateTime.now()
+                ? DateTime.tryParse(data['updatedAt'].toString()) ??
+                    DateTime.now()
                 : DateTime.now(),
           );
         }

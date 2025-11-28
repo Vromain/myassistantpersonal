@@ -1,6 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/auth.dart';
+import '../models/user.dart';
 import '../services/auth_repository.dart';
+import '../services/auth_service.dart';
+import '../services/dio_client.dart';
 
 part 'auth_provider.g.dart';
 
@@ -41,6 +44,40 @@ class Auth extends _$Auth {
   Future<void> signOut() async {
     await _authRepository.signOut();
     state = AsyncValue.data(AuthState.unauthenticated());
+  }
+
+  /// Sign in with email/password
+  Future<void> signInWithEmailPassword(String email, String password) async {
+    state = const AsyncValue.loading();
+
+    state = await AsyncValue.guard(() async {
+      final result = await AuthService.login(email: email, password: password);
+      if (result['success'] != true) {
+        throw Exception(result['error'] ?? 'Login failed');
+      }
+      // Token has been saved by AuthService
+      final token = await DioClient.getToken() ?? '';
+
+      // Build a minimal user from login response to avoid blocking on profile fetch
+      final userJson = result['user'] as Map<String, dynamic>;
+      User user = User(
+        id: (userJson['id'] ?? userJson['_id'] ?? '').toString(),
+        email: (userJson['email'] ?? '').toString(),
+        subscriptionTier: (userJson['subscriptionTier'] ?? 'free').toString(),
+        preferences: UserPreferences.defaults(),
+        connectedAccountIds: const [],
+        lastLoginAt: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // Try to fetch the full profile; fallback to minimal if it fails (e.g., CORS on web)
+      try {
+        user = await _authRepository.fetchUserProfile();
+      } catch (_) {}
+
+      return AuthState.authenticated(user: user, accessToken: token);
+    });
   }
 }
 

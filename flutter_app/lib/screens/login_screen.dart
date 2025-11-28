@@ -139,18 +139,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 _submitting = true;
                                 _error = null;
                               });
-                              final result = await AuthService.login(
-                                  email: email, password: password);
+                              final router = GoRouter.of(context);
+                              await ref
+                                  .read(authProvider.notifier)
+                                  .signInWithEmailPassword(email, password);
                               if (!mounted) return;
-                              if (result['success'] == true) {
-                                ref.invalidate(authProvider);
-                                if (!context.mounted) return;
-                                context.go('/');
+                              final isAuth = ref.read(isAuthenticatedProvider);
+                              if (isAuth) {
+                                router.go('/main');
                               } else {
-                                if (!mounted) return;
+                                final err =
+                                    ref.read(authProvider).valueOrNull?.error;
                                 setState(() {
-                                  _error =
-                                      result['error'] ?? 'Échec de connexion';
+                                  _error = err ?? 'Échec de connexion';
                                   _submitting = false;
                                 });
                               }
