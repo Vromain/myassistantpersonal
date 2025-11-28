@@ -219,7 +219,8 @@ class _RootPageState extends ConsumerState<RootPage> {
       await AuthService.saveTokenFromWebCallback(token);
       ref.invalidate(authProvider);
       if (!mounted) return;
-      // Stay on current route; router redirect allows token param
+      final router = GoRouter.of(context);
+      router.go('/main');
     }
   }
 

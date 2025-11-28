@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -141,13 +142,22 @@ class AuthRepository {
       if (token == null || token.isEmpty) {
         return null;
       }
-
-      final user = await _fetchUserProfile();
-
-      return AuthState.authenticated(
-        user: user,
-        accessToken: token,
-      );
+      try {
+        final user = await _fetchUserProfile();
+        return AuthState.authenticated(
+          user: user,
+          accessToken: token,
+        );
+      } catch (_) {
+        final user = _minimalUserFromToken(token);
+        if (user != null) {
+          return AuthState.authenticated(
+            user: user,
+            accessToken: token,
+          );
+        }
+        return null;
+      }
     } catch (e) {
       debugPrint('❌ Restore auth error: $e');
       return null;
@@ -199,6 +209,36 @@ class AuthRepository {
     } catch (e) {
       debugPrint('❌ Fetch user profile error: $e');
       rethrow;
+    }
+  }
+
+  User? _minimalUserFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      String normalized = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      switch (normalized.length % 4) {
+        case 2:
+          normalized += '==';
+          break;
+        case 3:
+          normalized += '=';
+          break;
+      }
+      final payload = utf8.decode(base64.decode(normalized));
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      final userId = (data['userId'] ?? data['sub'] ?? '').toString();
+      final email = (data['email'] ?? '').toString();
+      if (userId.isEmpty && email.isEmpty) return null;
+      return User(
+        id: userId.isNotEmpty ? userId : email,
+        email: email,
+        preferences: UserPreferences.defaults(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } catch (_) {
+      return null;
     }
   }
 }
