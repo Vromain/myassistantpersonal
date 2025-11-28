@@ -7,6 +7,7 @@ part 'message.g.dart';
 /// Task: T028 - Create Dart models
 /// Reference: specs/001-ai-communication-hub/data-model.md
 
+@JsonEnum(alwaysCreate: true)
 enum Platform {
   gmail,
   exchange,
@@ -15,6 +16,8 @@ enum Platform {
   instagram,
   whatsapp,
   twitter,
+  @JsonValue('outlook_calendar')
+  outlookCalendar,
 }
 
 enum PriorityLevel {

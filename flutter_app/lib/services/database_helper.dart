@@ -281,14 +281,19 @@ class DatabaseHelper {
 
   /// Convert Map from database to Message
   Message _messageFromMap(Map<String, dynamic> map) {
+    final platformStr = map['platform'] as String;
+    // Handle legacy stored value 'outlook_calendar' and current enum name
+    final platformEnum = Platform.values.firstWhere(
+      (p) => p.name == platformStr ||
+          (platformStr == 'outlook_calendar' && p == Platform.outlookCalendar),
+      orElse: () => Platform.gmail,
+    );
+
     return Message(
       id: map['id'] as String,
       accountId: map['account_id'] as String,
       externalId: map['external_id'] as String,
-      platform: Platform.values.firstWhere(
-        (p) => p.name == map['platform'],
-        orElse: () => Platform.gmail,
-      ),
+      platform: platformEnum,
       sender: map['sender'] as String,
       recipient: map['recipient'] as String,
       subject: map['subject'] as String?,

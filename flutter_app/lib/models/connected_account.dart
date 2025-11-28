@@ -60,6 +60,8 @@ class ConnectedAccount with _$ConnectedAccount {
         return '💬';
       case Platform.twitter:
         return '🐦';
+      case Platform.outlookCalendar:
+        return '📅';
     }
   }
 }

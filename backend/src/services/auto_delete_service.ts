@@ -5,6 +5,8 @@ import { ConnectedAccount } from '../models/connected_account';
 import { UserSettings } from '../models/user_settings';
 import { getGmailAccessToken } from './auth/gmail_strategy';
 import mongoose from 'mongoose';
+import { getMessageSqlRepo, MessageSql } from '../models/message_sql';
+import { messageAnalysisService } from './message_analysis_service';
 
 /**
  * Auto-Delete Spam Service
@@ -70,22 +72,15 @@ export class AutoDeleteService {
 
       console.log(`🎯 AutoDelete: Threshold set to ${settings.spamThreshold}%`);
 
-      // Find messages that are marked as spam and not yet trashed
-      const spamMessages = await Message.find({
+      const mongoMessages = await Message.find({
         userId: userId,
         isTrashed: false
       }).lean();
 
-      result.messagesProcessed = spamMessages.length;
-
-      if (spamMessages.length === 0) {
-        console.log(`✅ AutoDelete: No messages to process`);
-        result.success = true;
-        return result;
-      }
+      result.messagesProcessed = mongoMessages.length;
 
       // Get message analyses for these messages
-      const messageIds = spamMessages.map(m => m._id);
+      const messageIds = mongoMessages.map(m => m._id);
       const analyses = await MessageAnalysis.find({
         messageId: { $in: messageIds },
         spamProbability: { $gte: settings.spamThreshold }
@@ -96,13 +91,12 @@ export class AutoDeleteService {
       // Process each spam message
       for (const analysis of analyses) {
         try {
-          const message = spamMessages.find(
+          const message = mongoMessages.find(
             m => m._id.toString() === analysis.messageId.toString()
           );
 
           if (!message) continue;
 
-          // Move to trash via Gmail API (T061)
           const deleted = await this.moveToTrash(
             message.userId.toString(),
             message.accountId.toString(),
@@ -129,6 +123,43 @@ export class AutoDeleteService {
           console.error(`❌ AutoDelete: Error processing message:`, error);
           result.errors.push(`Failed to delete message: ${error.message}`);
         }
+      }
+
+      // Process IMAP messages stored in SQL
+      try {
+        const imapAccounts = await ConnectedAccount.find({ userId, platform: 'imap' });
+        if (imapAccounts.length > 0) {
+          const accountIds = imapAccounts.map(a => a.id);
+          const repo = await getMessageSqlRepo();
+          const imapMessages = await repo
+            .createQueryBuilder('m')
+            .where('m.accountId IN (:...ids)', { ids: accountIds })
+            .andWhere('m.archivedAt IS NULL')
+            .getMany();
+
+          for (const m of imapMessages) {
+            try {
+              const spam = await messageAnalysisService.detectSpam({
+                subject: m.subject || '',
+                from: m.sender,
+                body: m.content
+              } as any);
+
+              if (spam.probability >= settings.spamThreshold) {
+                const ok = await this.moveToTrashImap(m.accountId, m.externalId);
+                if (ok) {
+                  await repo.delete({ id: m.id });
+                  result.messagesDeleted++;
+                  result.deletedMessageIds.push(m.id);
+                }
+              }
+            } catch (e: any) {
+              result.errors.push(`IMAP delete failed: ${e.message}`);
+            }
+          }
+        }
+      } catch (e: any) {
+        result.errors.push(`IMAP processing error: ${e.message}`);
       }
 
       result.success = result.errors.length === 0;
@@ -160,6 +191,9 @@ export class AutoDeleteService {
       const account = await ConnectedAccount.findById(accountId);
 
       if (!account || account.platform !== 'gmail') {
+        if (account && account.platform === 'imap') {
+          return this.moveToTrashImap(accountId, messageExternalId);
+        }
         console.error(`❌ AutoDelete: Invalid account ${accountId}`);
         return false;
       }
@@ -187,6 +221,50 @@ export class AutoDeleteService {
       return true;
     } catch (error: any) {
       console.error(`❌ AutoDelete: Gmail API trash failed:`, error);
+      return false;
+    }
+  }
+
+  private async moveToTrashImap(
+    accountId: string,
+    uid: string
+  ): Promise<boolean> {
+    try {
+      const account = await ConnectedAccount.findById(accountId);
+      if (!account || account.platform !== 'imap') {
+        return false;
+      }
+
+      const tokens = (account as any).decryptTokens(account.oauthTokens);
+      const imapSimple = require('imap-simple');
+      const config = {
+        imap: {
+          user: account.email,
+          password: tokens.accessToken,
+          host: (account as any).imapConfig.host,
+          port: (account as any).imapConfig.port,
+          tls: (account as any).imapConfig.secure,
+          authTimeout: 10000,
+          tlsOptions: { rejectUnauthorized: false }
+        }
+      };
+
+      const connection = await imapSimple.connect(config);
+      await connection.openBox('INBOX');
+      try {
+        await connection.moveMessage(uid, 'Trash');
+      } catch (_e) {
+        try {
+          await connection.addFlags(uid, '\\Deleted');
+          await (connection as any).imap.expunge();
+        } catch (e2) {
+          await connection.end();
+          return false;
+        }
+      }
+      await connection.end();
+      return true;
+    } catch (_err) {
       return false;
     }
   }

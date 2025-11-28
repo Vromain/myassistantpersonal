@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../models/message.dart';
 import '../models/message_analysis.dart';
 import 'api_client.dart';
@@ -30,11 +32,18 @@ class MessageRepository {
     String sortOrder = 'desc',
   }) async {
     try {
+      // Map platform enum to backend expected values
+      final pList = platforms
+          ?.map((p) =>
+              p == Platform.outlookCalendar ? 'outlook_calendar' : p.name)
+          .toList();
+      final platformsParam = pList?.join(',');
+
       // Try to fetch from API
       final response = await _apiClient.getMessages(
         page: page,
         limit: limit,
-        platforms: platforms?.map((p) => p.name).join(','),
+        platforms: platformsParam,
         priority: priority?.name,
         readStatus: readStatus,
         urgent: urgent,
@@ -43,39 +52,41 @@ class MessageRepository {
         sortOrder: sortOrder,
       );
 
-      // Cache the results for offline access
-      if (response.messages.isNotEmpty) {
+      // Cache the results for offline access (skip on web)
+      if (!kIsWeb && response.messages.isNotEmpty) {
         await _dbHelper.cacheMessages(response.messages);
       }
 
       return response;
     } catch (e) {
       // If network error, try to return cached messages
-      try {
-        final cachedMessages = await _dbHelper.getCachedMessages(
-          limit: limit,
-          offset: (page - 1) * limit,
-          platforms: platforms,
-          priority: priority,
-          readStatus: readStatus,
-          urgent: urgent,
-          categoryId: categoryId,
-          sortBy: sortBy,
-          sortOrder: sortOrder,
-        );
+      if (!kIsWeb) {
+        try {
+          final cachedMessages = await _dbHelper.getCachedMessages(
+            limit: limit,
+            offset: (page - 1) * limit,
+            platforms: platforms,
+            priority: priority,
+            readStatus: readStatus,
+            urgent: urgent,
+            categoryId: categoryId,
+            sortBy: sortBy,
+            sortOrder: sortOrder,
+          );
 
-        // Return cached data with approximate pagination
-        return MessageListResponse(
-          messages: cachedMessages,
-          total: cachedMessages.length,
-          page: page,
-          limit: limit,
-          hasMore: cachedMessages.length >= limit,
-          stats: MessageStats.empty(),
-        );
-      } catch (cacheError) {
-        throw _handleError(e);
+          return MessageListResponse(
+            messages: cachedMessages,
+            total: cachedMessages.length,
+            page: page,
+            limit: limit,
+            hasMore: cachedMessages.length >= limit,
+            stats: MessageStats.empty(),
+          );
+        } catch (cacheError) {
+          throw _handleError(e);
+        }
       }
+      throw _handleError(e);
     }
   }
 
@@ -86,12 +97,14 @@ class MessageRepository {
       final response = await _apiClient.getUnreadCount();
       return response['count'] as int? ?? 0;
     } catch (e) {
-      // If network error, return cached count
-      try {
-        return await _dbHelper.getCachedUnreadCount();
-      } catch (cacheError) {
-        throw _handleError(e);
+      if (!kIsWeb) {
+        try {
+          return await _dbHelper.getCachedUnreadCount();
+        } catch (cacheError) {
+          throw _handleError(e);
+        }
       }
+      throw _handleError(e);
     }
   }
 
@@ -115,14 +128,16 @@ class MessageRepository {
   Future<Message> getMessage(String id) async {
     try {
       final message = await _apiClient.getMessage(id);
-      // Cache the fetched message
-      await _dbHelper.cacheMessage(message);
+      if (!kIsWeb) {
+        await _dbHelper.cacheMessage(message);
+      }
       return message;
     } catch (e) {
-      // If network error, try to return cached message
-      final cachedMessage = await _dbHelper.getCachedMessage(id);
-      if (cachedMessage != null) {
-        return cachedMessage;
+      if (!kIsWeb) {
+        final cachedMessage = await _dbHelper.getCachedMessage(id);
+        if (cachedMessage != null) {
+          return cachedMessage;
+        }
       }
       throw _handleError(e);
     }
@@ -131,8 +146,9 @@ class MessageRepository {
   /// Mark message as read/unread
   /// Updates cache immediately for offline support
   Future<void> updateReadStatus(String id, bool readStatus) async {
-    // Update cache immediately for responsive UI
-    await _dbHelper.updateCachedReadStatus(id, readStatus);
+    if (!kIsWeb) {
+      await _dbHelper.updateCachedReadStatus(id, readStatus);
+    }
 
     try {
       // Sync with server
@@ -194,8 +210,9 @@ class MessageRepository {
   /// Manually assign category to message
   /// Updates cache immediately for offline support
   Future<void> assignCategory(String messageId, String? categoryId) async {
-    // Update cache immediately for responsive UI
-    await _dbHelper.updateCachedCategory(messageId, categoryId);
+    if (!kIsWeb) {
+      await _dbHelper.updateCachedCategory(messageId, categoryId);
+    }
 
     try {
       // Sync with server
@@ -289,7 +306,8 @@ class MessageRepository {
         messageId,
         {},
       );
-      return MessageAnalysis.fromJson(response['analysis'] as Map<String, dynamic>);
+      return MessageAnalysis.fromJson(
+          response['analysis'] as Map<String, dynamic>);
     } catch (e) {
       throw _handleError(e);
     }
