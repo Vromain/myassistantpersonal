@@ -19,7 +19,11 @@ class _IntegrationsScreenState extends ConsumerState<IntegrationsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAccounts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadAccounts();
+      }
+    });
   }
 
   Future<void> _loadAccounts() async {
