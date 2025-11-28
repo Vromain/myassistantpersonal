@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, ManyToOne, In } from 'typeorm';
 import { db } from '../db/connection';
 import { User } from './user';
 import crypto from 'crypto';
@@ -198,16 +198,26 @@ export class ConnectedAccount implements IConnectedAccount {
     return a;
   }
 
-  static find(_filter: any): any {
-    class Query {
-      select(_s: string): Promise<any[]> { return Promise.resolve([]); }
-      sort(_o: any): any { return this; }
-      limit(_n: number): any { return this; }
-      skip(_n: number): any { return this; }
-      populate(_f: string, _s?: string): any { return this; }
-      lean(): Promise<any[]> { return Promise.resolve([]); }
+  static async find(filter: any): Promise<ConnectedAccount[]> {
+    const ds = db.getConnection();
+    const repo = ds!.getRepository(ConnectedAccount);
+    const where: any = {};
+    if (filter.userId) where.userId = filter.userId;
+    if (filter.platform) where.platform = filter.platform;
+    if (filter.email) where.email = filter.email;
+    if (filter.id) where.id = filter.id;
+    if (filter.syncStatus) where.syncStatus = filter.syncStatus;
+    // Support basic $in for syncStatus
+    if (filter.syncStatus && filter.syncStatus.$in) {
+      where.syncStatus = In(filter.syncStatus.$in);
     }
-    return new Query();
+    // Fetch all and then apply simple array-based filters if needed
+    let results = await repo.find({ where: where } as any);
+    if (filter.id && filter.id.$in) {
+      const ids: string[] = filter.id.$in;
+      results = results.filter(a => ids.includes(a.id));
+    }
+    return results;
   }
 }
 

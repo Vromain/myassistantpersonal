@@ -1,5 +1,6 @@
 import cron, { ScheduledTask } from 'node-cron';
 import { User } from '../models/user';
+import { db } from '../db/connection';
 import { ConnectedAccount } from '../models/connected_account';
 import { Message, IMessage } from '../models/message';
 import { MessageAnalysis } from '../models/message_analysis';
@@ -98,12 +99,13 @@ export class EmailProcessingCronService {
       console.log('🔄 Cron: Starting email processing for all users...');
 
       // Get all active users
-      const users = await User.find({ isActive: true }).lean();
+      const ds = db.getConnection();
+      const users = await ds!.getRepository(User).find();
       console.log(`👥 Cron: Found ${users.length} active users`);
 
       for (const user of users) {
         try {
-          const userStats = await this.processUser(user._id.toString());
+          const userStats = await this.processUser((user as any).id);
 
           // Aggregate stats
           stats.usersProcessed++;
@@ -118,8 +120,8 @@ export class EmailProcessingCronService {
             stats.errors.push(...userStats.errors);
           }
         } catch (error: any) {
-          console.error(`❌ Cron: Error processing user ${user._id}:`, error);
-          stats.errors.push(`User ${user._id}: ${error.message}`);
+          console.error(`❌ Cron: Error processing user ${(user as any).id}:`, error);
+          stats.errors.push(`User ${(user as any).id}: ${error.message}`);
         }
       }
 
@@ -164,7 +166,7 @@ export class EmailProcessingCronService {
 
     // Get connected accounts
     const accounts = await ConnectedAccount.find({
-      userId: new mongoose.Types.ObjectId(userId),
+      userId: userId,
       isActive: true
     });
 
@@ -246,7 +248,7 @@ export class EmailProcessingCronService {
   private async getUnanalyzedMessages(userId: string): Promise<IMessage[]> {
     // Find messages without analysis
     const messages = await Message.find({
-      userId: new mongoose.Types.ObjectId(userId)
+      userId: userId
     }).lean();
 
     const messageIds = messages.map(m => m._id);

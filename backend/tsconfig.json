@@ -25,14 +25,7 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src/server.ts",
-    "src/api/index.ts",
-    "src/api/auth/gmail.ts",
-    "src/services/auth/gmail_strategy.ts",
-    "src/middleware/auth.ts",
-    "src/db/connection.ts",
-    "src/models/user.ts",
-    "src/models/connected_account.ts"
+    "src/**/*.ts"
   ],
   "exclude": ["node_modules", "dist", "tests"]
 }

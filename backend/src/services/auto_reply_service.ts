@@ -159,7 +159,7 @@ Generate ONLY the reply text (no subject line, no additional formatting). Start 
       }
 
       // Get access token
-      const accessToken = await getGmailAccessToken(account._id.toString());
+      const accessToken = await getGmailAccessToken(account.id);
       if (!accessToken) {
         console.error('❌ AutoReply: Failed to get access token');
         return false;

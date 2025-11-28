@@ -1,5 +1,6 @@
 import { ConnectedAccount } from '../models/connected_account';
 import { gmailSyncService } from './sync/gmail_sync';
+import { imapSyncService } from './sync/imap_sync';
 
 /**
  * Sync Scheduler Service
@@ -188,9 +189,8 @@ export class SyncScheduler {
           return;
 
         case 'imap':
-          // TODO: Implement IMAP sync
-          console.warn(`⚠️  IMAP sync not yet implemented for ${account.email}`);
-          return;
+          result = await imapSyncService.syncAccount(accountId);
+          break;
 
         default:
           console.error(`❌ Unsupported platform: ${account.platform}`);

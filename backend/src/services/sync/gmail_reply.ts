@@ -62,7 +62,7 @@ export class GmailReplyService {
 
       // Get the connected account
       const account = await ConnectedAccount.findOne({
-        _id: message.accountId,
+        id: message.accountId as any,
         userId,
         platform: 'gmail'
       });
@@ -203,7 +203,7 @@ export class GmailReplyService {
     try {
       // Get the connected account
       const account = await ConnectedAccount.findOne({
-        _id: accountId,
+        id: accountId,
         userId,
         platform: 'gmail'
       });

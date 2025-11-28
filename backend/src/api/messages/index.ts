@@ -651,12 +651,18 @@ router.post('/sync', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
-    // Trigger sync in background
-    gmailSyncService.syncUserAccounts(userId).then(results => {
-      console.log(`✅ Sync completed for user ${userId}:`, results);
-    }).catch(error => {
-      console.error(`❌ Sync failed for user ${userId}:`, error);
-    });
+    // Trigger sync in background for all platforms
+    const { imapSyncService } = await import('../../services/sync/imap_sync');
+    Promise.all([
+      gmailSyncService.syncUserAccounts(userId),
+      imapSyncService.syncUserAccounts(userId)
+    ])
+      .then(results => {
+        console.log(`✅ Sync completed for user ${userId}:`, results);
+      })
+      .catch(error => {
+        console.error(`❌ Sync failed for user ${userId}:`, error);
+      });
 
     res.json({
       success: true,

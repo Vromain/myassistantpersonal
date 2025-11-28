@@ -18,8 +18,8 @@ export interface IAttachment {
 }
 
 export interface IMessage extends Document {
-  userId: mongoose.Types.ObjectId;
-  accountId: mongoose.Types.ObjectId;
+  userId: string;
+  accountId: string;
   externalId: string;  // ID from the original platform
   platform: Platform;
   sender: string;
@@ -61,14 +61,12 @@ const AttachmentSchema = new Schema<IAttachment>({
 
 const MessageSchema = new Schema<IMessage>({
   userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: true,
     index: true
   },
   accountId: {
-    type: Schema.Types.ObjectId,
-    ref: 'ConnectedAccount',
+    type: String,
     required: true,
     index: true
   },

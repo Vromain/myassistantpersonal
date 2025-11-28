@@ -1,5 +1,8 @@
 import { Message, IMessage, PriorityLevel } from '../models/message';
 import { ConnectedAccount } from '../models/connected_account';
+import { db } from '../db/connection';
+import { MessageSql } from '../models/message_sql';
+import { In } from 'typeorm';
 import { Category } from '../models/category';
 import { ollamaClient } from './ollama_client';
 import mongoose from 'mongoose';
@@ -69,9 +72,9 @@ export class MessageAggregatorService {
       const accounts = await ConnectedAccount.find({
         userId: filter.userId,
         ...(filter.platforms && { platform: { $in: filter.platforms } })
-      }).select('_id');
+      });
 
-      const accountIds = accounts.map(acc => acc._id);
+      const accountIds = accounts.map(acc => acc.id);
 
       // Build query
       const query: any = {
@@ -118,28 +121,50 @@ export class MessageAggregatorService {
         query.$text = { $search: filter.searchQuery };
       }
 
-      // Execute query with pagination
-      const [messages, total] = await Promise.all([
-        Message.find(query)
-          .sort({ [sortBy]: sortOrder === 'desc' ? -1 : 1 })
-          .skip(skip)
-          .limit(limit)
-          .populate('categoryId', 'name color')
-          .lean(),
-        Message.countDocuments(query)
-      ]);
+      // Try MySQL first
+      const ds = db.getConnection();
+      const repo = ds!.getRepository(MessageSql);
+      const qb = repo.createQueryBuilder('m');
 
-      // Calculate stats
-      // @ts-ignore - Type mismatch in Mongoose aggregation
-      const stats = await this.calculateStats(accountIds, filter);
+      qb.where('m.accountId IN (:...ids)', { ids: accountIds.length ? accountIds : ['-'] });
+
+      if (filter.priorityLevels && filter.priorityLevels.length > 0) {
+        qb.andWhere('m.priorityLevel IN (:...levels)', { levels: filter.priorityLevels });
+      }
+      if (filter.readStatus !== undefined) {
+        qb.andWhere('m.readStatus = :rs', { rs: filter.readStatus });
+      }
+      if (filter.isUrgent !== undefined) {
+        qb.andWhere('m.isUrgent = :urg', { urg: filter.isUrgent });
+      }
+      if (filter.archived !== undefined) {
+        if (filter.archived) {
+          qb.andWhere('m.archivedAt IS NOT NULL');
+        } else {
+          qb.andWhere('m.archivedAt IS NULL');
+        }
+      }
+      if (filter.dateFrom) {
+        qb.andWhere('m.timestamp >= :df', { df: filter.dateFrom });
+      }
+      if (filter.dateTo) {
+        qb.andWhere('m.timestamp <= :dt', { dt: filter.dateTo });
+      }
+
+      qb.orderBy(`m.${sortBy}`, sortOrder.toUpperCase() as any)
+        .skip(skip)
+        .take(limit);
+
+      const [sqlMessages, total] = await qb.getManyAndCount();
+
+      const stats = await this.calculateStatsSql(accountIds, filter);
 
       return {
-        // @ts-ignore - Mongoose document to interface conversion
-        messages: messages as IMessage[],
+        messages: sqlMessages as unknown as IMessage[],
         total,
         page,
         limit,
-        hasMore: skip + messages.length < total,
+        hasMore: skip + sqlMessages.length < total,
         stats
       };
     } catch (error) {
@@ -151,86 +176,44 @@ export class MessageAggregatorService {
   /**
    * Calculate message statistics
    */
-  private async calculateStats(
-    accountIds: mongoose.Types.ObjectId[],
+  private async calculateStatsSql(
+    accountIds: string[],
     filter: MessageFilter
   ): Promise<AggregatedMessageList['stats']> {
-    const baseQuery: any = { accountId: { $in: accountIds } };
+    const ds = db.getConnection();
+    const repo = ds!.getRepository(MessageSql);
+    const base: any = { accountId: In(accountIds.length ? accountIds : ['-']) };
+    if (filter.archived === false) base.archivedAt = null;
 
-    if (filter.archived === false) {
-      baseQuery.archivedAt = { $exists: false };
-    }
+    const unreadCount = await repo.count({ where: { ...base, readStatus: false } });
+    const urgentCount = await repo.count({ where: { ...base, isUrgent: true } });
 
-    const [unreadCount, urgentCount, byPriority, byPlatformResults] = await Promise.all([
-      // Unread count
-      Message.countDocuments({
-        ...baseQuery,
-        readStatus: false
-      }),
+    const byPriorityArr = await repo.createQueryBuilder('m')
+      .select('m.priorityLevel as level')
+      .addSelect('COUNT(*) as count')
+      .where('m.accountId IN (:...ids)', { ids: accountIds.length ? accountIds : ['-'] })
+      .groupBy('m.priorityLevel')
+      .getRawMany();
 
-      // Urgent count
-      Message.countDocuments({
-        ...baseQuery,
-        isUrgent: true
-      }),
+    const byPlatformArr = await repo.createQueryBuilder('m')
+      .select('m.platform as platform')
+      .addSelect('COUNT(*) as count')
+      .where('m.accountId IN (:...ids)', { ids: accountIds.length ? accountIds : ['-'] })
+      .groupBy('m.platform')
+      .getRawMany();
 
-      // By priority
-      Message.aggregate([
-        { $match: baseQuery },
-        {
-          $group: {
-            _id: '$priorityLevel',
-            count: { $sum: 1 }
-          }
-        }
-      ]),
-
-      // By platform
-      Message.aggregate([
-        { $match: baseQuery },
-        {
-          $lookup: {
-            from: 'connected_accounts',
-            localField: 'accountId',
-            foreignField: '_id',
-            as: 'account'
-          }
-        },
-        { $unwind: '$account' },
-        {
-          $group: {
-            _id: '$account.platform',
-            count: { $sum: 1 }
-          }
-        }
-      ])
-    ]);
-
-    // Transform priority stats
-    const priorityStats = {
-      high: 0,
-      medium: 0,
-      low: 0
-    };
-
-    byPriority.forEach((item: any) => {
-      if (item._id in priorityStats) {
-        priorityStats[item._id as PriorityLevel] = item.count;
-      }
+    const priorityStats = { high: 0, medium: 0, low: 0 } as { [k in PriorityLevel]: number };
+    byPriorityArr.forEach(r => {
+      const lvl = (r.level as string) as PriorityLevel;
+      if (lvl in priorityStats) priorityStats[lvl] = parseInt(r.count, 10);
     });
 
-    // Transform platform stats
     const platformStats: Record<string, number> = {};
-    byPlatformResults.forEach((item: any) => {
-      platformStats[item._id] = item.count;
+    byPlatformArr.forEach(r => {
+      platformStats[r.platform as string] = parseInt(r.count, 10);
     });
 
-    return {
-      unreadCount,
-      urgentCount,
-      byPriority: priorityStats,
-      byPlatform: platformStats
-    };
+    return { unreadCount, urgentCount, byPriority: priorityStats, byPlatform: platformStats };
   }
 
   /**
@@ -239,8 +222,8 @@ export class MessageAggregatorService {
   async getMessage(messageId: string, userId: string): Promise<IMessage | null> {
     try {
       // Get user's account IDs
-      const accounts = await ConnectedAccount.find({ userId }).select('_id');
-      const accountIds = accounts.map(acc => acc._id);
+      const accounts = await ConnectedAccount.find({ userId });
+      const accountIds = accounts.map(acc => acc.id);
 
       const message = await Message.findOne({
         _id: messageId,
@@ -439,8 +422,8 @@ export class MessageAggregatorService {
       }
 
       // Get user's account IDs
-      const accounts = await ConnectedAccount.find({ userId }).select('_id');
-      const accountIds = accounts.map(acc => acc._id);
+      const accounts = await ConnectedAccount.find({ userId });
+      const accountIds = accounts.map(acc => acc.id);
 
       const threadMessages = await Message.find({
         accountId: { $in: accountIds },
@@ -479,14 +462,11 @@ export class MessageAggregatorService {
    */
   async getUnreadCount(userId: string): Promise<number> {
     try {
-      const accounts = await ConnectedAccount.find({ userId }).select('_id');
-      const accountIds = accounts.map(acc => acc._id);
-
-      return await Message.countDocuments({
-        accountId: { $in: accountIds },
-        readStatus: false,
-        archivedAt: { $exists: false }
-      });
+      const accounts = await ConnectedAccount.find({ userId });
+      const accountIds = accounts.map(acc => acc.id);
+      const ds = db.getConnection();
+      const repo = ds!.getRepository(MessageSql);
+      return await repo.count({ where: { accountId: In(accountIds.length ? accountIds : ['-']), readStatus: false, archivedAt: null } });
     } catch (error) {
       console.error('❌ Error getting unread count:', error);
       return 0;
@@ -519,8 +499,8 @@ export class MessageAggregatorService {
    */
   async bulkMarkAsRead(userId: string, messageIds: string[]): Promise<number> {
     try {
-      const accounts = await ConnectedAccount.find({ userId }).select('_id');
-      const accountIds = accounts.map(acc => acc._id);
+      const accounts = await ConnectedAccount.find({ userId });
+      const accountIds = accounts.map(acc => acc.id);
 
       const result = await Message.updateMany(
         {
@@ -541,8 +521,8 @@ export class MessageAggregatorService {
 
   async bulkArchive(userId: string, messageIds: string[]): Promise<number> {
     try {
-      const accounts = await ConnectedAccount.find({ userId }).select('_id');
-      const accountIds = accounts.map(acc => acc._id);
+      const accounts = await ConnectedAccount.find({ userId });
+      const accountIds = accounts.map(acc => acc.id);
 
       const result = await Message.updateMany(
         {
@@ -576,14 +556,14 @@ export class MessageAggregatorService {
     try {
       // Get user's connected accounts
       const accounts = await ConnectedAccount.find({
-        userId: new mongoose.Types.ObjectId(userId)
+        userId: userId
       });
 
       if (accounts.length === 0) {
         return null;
       }
 
-      const accountIds = accounts.map(acc => acc._id);
+      const accountIds = accounts.map(acc => acc.id);
 
       // Get the current message to check for existing category (T053, T060)
       const currentMessage = await Message.findOne({

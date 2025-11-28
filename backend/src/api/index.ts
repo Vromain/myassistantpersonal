@@ -8,6 +8,7 @@ import gmailAuthRoutes from './auth/gmail';
 import localAuthRoutes from './auth/local';
 import usersRoutes from './users';
 import accountsRoutes from './accounts';
+import messagesRoutes from './messages';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use('/auth', gmailAuthRoutes);
 router.use('/auth', localAuthRoutes);
 router.use('/users', usersRoutes);
 router.use('/accounts', accountsRoutes);
+router.use('/messages', messagesRoutes);
 // Local auth temporarily disabled during MySQL migration
 
 export default router;

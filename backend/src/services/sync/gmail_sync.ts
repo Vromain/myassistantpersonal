@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { ConnectedAccount, IConnectedAccount } from '../../models/connected_account';
 import { Message, IMessage } from '../../models/message';
+import { getMessageSqlRepo, MessageSql } from '../../models/message_sql';
 import { getGmailAccessToken } from '../auth/gmail_strategy';
 import { ollamaClient } from '../ollama_client';
 import { createUserRateLimiter, RateLimiter } from '../rate_limiter';
@@ -110,7 +111,7 @@ export class GmailSyncService {
       const messageList = await rateLimiter.execute(
         async () => gmail.users.messages.list({
           userId: 'me',
-          q: query,
+          q: query || undefined,
           maxResults: 500 // Gmail API limit
         }),
         5 // quota cost
@@ -237,10 +238,8 @@ export class GmailSyncService {
    */
   private buildGmailQuery(syncFrom?: Date): string {
     if (!syncFrom) {
-      // First sync - get messages from last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return `after:${this.formatDateForGmail(thirtyDaysAgo)}`;
+      // First sync - no filter to fetch recent messages
+      return '';
     }
 
     // Incremental sync - get messages since last sync
@@ -267,7 +266,7 @@ export class GmailSyncService {
     try {
       // Check if message already exists
       const existing = await Message.findOne({
-        accountId: account._id,
+        accountId: (account as any).id,
         externalId: gmailMessage.id
       });
 
@@ -290,9 +289,10 @@ export class GmailSyncService {
       // Extract attachments
       const attachments = this.extractAttachments(gmailMessage);
 
-      // Create message document
+      // Create message document (MongoDB)
       const message = new Message({
-        accountId: account._id,
+        userId: (account as any).userId,
+        accountId: (account as any).id,
         externalId: gmailMessage.id,
         platform: 'gmail',
         sender: headers.from,
@@ -318,6 +318,39 @@ export class GmailSyncService {
       this.scorePriorityAsync(message);
 
       await message.save();
+
+      // Also store in MySQL (TypeORM)
+      try {
+        const repo = await getMessageSqlRepo();
+        const existingSql = await repo.findOne({ where: { accountId: (account as any).id, externalId: gmailMessage.id } });
+        if (!existingSql) {
+          const sqlMsg = repo.create({
+            userId: (account as any).userId,
+            accountId: (account as any).id,
+            externalId: gmailMessage.id,
+            platform: 'gmail',
+            sender: headers.from,
+            recipient: headers.to,
+            subject: headers.subject,
+            content: body,
+            timestamp: new Date(parseInt(gmailMessage.internalDate)),
+            readStatus: !gmailMessage.labelIds?.includes('UNREAD'),
+            priorityScore: 50,
+            priorityLevel: 'medium',
+            attachments,
+            isUrgent: message.isUrgent,
+            metadata: {
+              threadId: gmailMessage.threadId,
+              labelIds: gmailMessage.labelIds,
+              snippet: gmailMessage.snippet
+            },
+            archivedAt: null
+          } as Partial<MessageSql>);
+          await repo.save(sqlMsg);
+        }
+      } catch (e) {
+        console.warn('⚠️  Failed to store message in MySQL:', (e as any).message);
+      }
 
       // T028: Trigger AI analysis for the new message (async, don't block sync)
       this.analyzeMessageAsync(message._id.toString());

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import express, { Application, Request, Response } from 'express';
+import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
@@ -11,6 +12,7 @@ import { configureGmailStrategy } from './services/auth/gmail_strategy';
 import { ollamaClient } from './services/ollama_client';
 // Removed Mongo-dependent schedulers and seeding during MySQL migration
 import apiRoutes from './api';
+import { syncScheduler } from './services/sync_scheduler';
 
 // Load environment variables
 dotenv.config();
@@ -149,6 +151,12 @@ async function startServer() {
   try {
     console.log('🚀 Starting AI-Powered Communication Hub...\n');
 
+    // Connect to MongoDB (for message storage)
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/commhub';
+    console.log(`📦 Connecting to MongoDB: ${mongoUri}`);
+    await mongoose.connect(mongoUri);
+    console.log('✅ MongoDB connected\n');
+
     console.log('📦 Connecting to MySQL...');
     await db.connect();
     const dbHealth = await db.healthCheck();
@@ -171,6 +179,13 @@ async function startServer() {
     }
 
     
+    // Start background sync scheduler
+    try {
+      syncScheduler.start();
+      console.log('✅ Sync scheduler started');
+    } catch (e) {
+      console.warn('⚠️  Failed to start sync scheduler', e);
+    }
 
     // Start Express server
     app.listen(PORT, () => {

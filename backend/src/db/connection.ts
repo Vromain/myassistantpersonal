@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { User } from '../models/user';
 import { ConnectedAccount } from '../models/connected_account';
+import { MessageSql } from '../models/message_sql';
 
 interface MySQLConfig {
   host: string;
@@ -50,7 +51,7 @@ class DatabaseConnection {
         database: cfg.database,
         synchronize: true,
         logging: false,
-        entities: [User as any, ConnectedAccount as any]
+        entities: [User as any, ConnectedAccount as any, MessageSql as any]
       });
 
       await this.dataSource.initialize();
