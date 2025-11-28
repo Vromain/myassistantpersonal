@@ -11,6 +11,7 @@ class AccountsService {
     required String host,
     required int port,
     bool secure = true,
+    bool skipTest = false,
   }) async {
     try {
       final headers = await AuthService.getAuthHeaders();
@@ -24,6 +25,7 @@ class AccountsService {
           'host': host,
           'port': port,
           'secure': secure,
+          'skipTest': skipTest,
         }),
       );
 
@@ -42,10 +44,46 @@ class AccountsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Connection error: $e'
-      };
+      return {'success': false, 'error': 'Connection error: $e'};
+    }
+  }
+
+  // Test IMAP configuration without saving
+  static Future<Map<String, dynamic>> testImapConfig({
+    required String email,
+    required String password,
+    required String host,
+    required int port,
+    bool secure = true,
+  }) async {
+    try {
+      final headers = await AuthService.getAuthHeaders();
+      final response = await http.post(
+        Uri.parse('${Env.apiBaseUrl}/accounts/imap/test'),
+        headers: headers,
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+          'host': host,
+          'port': port,
+          'secure': secure,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Connexion IMAP réussie'
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['message'] ?? 'Échec du test IMAP'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
     }
   }
 
@@ -89,15 +127,13 @@ class AccountsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Connection error: $e'
-      };
+      return {'success': false, 'error': 'Connection error: $e'};
     }
   }
 
   // Disconnect account
-  static Future<Map<String, dynamic>> disconnectAccount(String accountId) async {
+  static Future<Map<String, dynamic>> disconnectAccount(
+      String accountId) async {
     try {
       final headers = await AuthService.getAuthHeaders();
 
@@ -109,10 +145,7 @@ class AccountsService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'message': data['message']
-        };
+        return {'success': true, 'message': data['message']};
       } else {
         return {
           'success': false,
@@ -120,10 +153,7 @@ class AccountsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Connection error: $e'
-      };
+      return {'success': false, 'error': 'Connection error: $e'};
     }
   }
 
@@ -151,10 +181,7 @@ class AccountsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Connection error: $e'
-      };
+      return {'success': false, 'error': 'Connection error: $e'};
     }
   }
 
@@ -197,10 +224,7 @@ class AccountsService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Connection error: $e'
-      };
+      return {'success': false, 'error': 'Connection error: $e'};
     }
   }
 }

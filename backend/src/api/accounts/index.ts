@@ -17,7 +17,7 @@ const router = Router();
  */
 router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, host, port = 993, secure = true } = req.body;
+    const { email, password, host, port = 993, secure = true, skipTest = false } = req.body;
     const userId = req.userId;
 
     // Validate required fields
@@ -49,34 +49,34 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Test IMAP connection first
-    const imaps = require('imap-simple');
+    if (!skipTest) {
+      const imaps = require('imap-simple');
+      const config = {
+        imap: {
+          user: email,
+          password: password,
+          host: host,
+          port: port,
+          tls: secure,
+          authTimeout: 10000,
+          tlsOptions: { rejectUnauthorized: false }
+        }
+      };
 
-    const config = {
-      imap: {
-        user: email,
-        password: password,
-        host: host,
-        port: port,
-        tls: secure,
-        authTimeout: 10000,
-        tlsOptions: { rejectUnauthorized: false }
+      try {
+        console.log(`🔐 Testing IMAP connection for ${email}@${host}:${port}`);
+        const connection = await imaps.connect(config);
+        await connection.end();
+        console.log(`✅ IMAP connection successful for ${email}`);
+      } catch (imapError: any) {
+        console.error('❌ IMAP connection failed:', imapError.message);
+        res.status(401).json({
+          error: 'IMAP Connection Failed',
+          message: `Could not connect to ${host}: ${imapError.message}`,
+          details: 'Please check your email, password, host, and port settings'
+        });
+        return;
       }
-    };
-
-    try {
-      console.log(`🔐 Testing IMAP connection for ${email}@${host}:${port}`);
-      const connection = await imaps.connect(config);
-      await connection.end();
-      console.log(`✅ IMAP connection successful for ${email}`);
-    } catch (imapError: any) {
-      console.error('❌ IMAP connection failed:', imapError.message);
-      res.status(401).json({
-        error: 'IMAP Connection Failed',
-        message: `Could not connect to ${host}: ${imapError.message}`,
-        details: 'Please check your email, password, host, and port settings'
-      });
-      return;
     }
 
     // Check if account already exists
@@ -154,6 +154,54 @@ router.post('/imap', authenticate, async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to connect IMAP account',
+      details: error.message
+    });
+  }
+});
+
+router.post('/imap/test', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, password, host, port = 993, secure = true } = req.body;
+
+    if (!email || !password || !host) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'email, password, and host are required'
+      });
+      return;
+    }
+
+    const imaps = require('imap-simple');
+    const config = {
+      imap: {
+        user: email,
+        password,
+        host,
+        port,
+        tls: secure,
+        authTimeout: 10000,
+        tlsOptions: { rejectUnauthorized: false }
+      }
+    };
+
+    try {
+      console.log(`🔐 Testing IMAP connection for ${email}@${host}:${port}`);
+      const connection = await imaps.connect(config);
+      await connection.end();
+      console.log(`✅ IMAP connection successful for ${email}`);
+      res.json({ success: true, message: 'IMAP connection successful' });
+    } catch (imapError: any) {
+      console.error('❌ IMAP connection failed:', imapError.message);
+      res.status(401).json({
+        error: 'IMAP Connection Failed',
+        message: `Could not connect to ${host}: ${imapError.message}`
+      });
+    }
+  } catch (error: any) {
+    console.error('❌ Error testing IMAP account:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to test IMAP account',
       details: error.message
     });
   }

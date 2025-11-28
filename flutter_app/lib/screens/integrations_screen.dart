@@ -120,6 +120,47 @@ class _IntegrationsScreenState extends ConsumerState<IntegrationsScreen> {
                 onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
                 child: const Text('Annuler'),
               ),
+              TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final email = emailController.text.trim();
+                        final password = passwordController.text;
+                        final host = hostController.text.trim();
+                        final port = int.tryParse(portController.text) ?? 993;
+
+                        if (email.isEmpty || password.isEmpty || host.isEmpty) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Veuillez remplir tous les champs'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isLoading = true);
+                        final result = await AccountsService.testImapConfig(
+                          email: email,
+                          password: password,
+                          host: host,
+                          port: port,
+                          secure: true,
+                        );
+                        setDialogState(() => isLoading = false);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(result['success'] == true
+                                ? (result['message'] ?? 'Connexion OK')
+                                : (result['error'] ?? 'Échec du test')),
+                            backgroundColor: result['success'] == true
+                                ? Colors.green
+                                : Colors.red,
+                          ),
+                        );
+                      },
+                child: const Text('Tester'),
+              ),
               ElevatedButton(
                 onPressed: isLoading
                     ? null
@@ -146,6 +187,7 @@ class _IntegrationsScreenState extends ConsumerState<IntegrationsScreen> {
                           host: host,
                           port: port,
                           secure: true,
+                          skipTest: true,
                         );
                         setDialogState(() => isLoading = false);
                         if (result['success'] == true) {
