@@ -4,8 +4,6 @@ import 'package:retrofit/retrofit.dart';
 import '../models/message.dart';
 import 'dio_client.dart';
 
- 
-
 part 'api_client.g.dart';
 
 /// API Client
@@ -178,6 +176,13 @@ abstract class ApiClient {
     @Query('endDate') String? endDate,
     @Query('limit') int? limit,
   });
+
+  // Dashboard endpoints
+  @GET('/dashboard/stats')
+  Future<dynamic> getDashboardStats();
+
+  @POST('/dashboard/process')
+  Future<dynamic> triggerProcessing();
 
   // User settings endpoints
   @GET('/settings')

@@ -3,12 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/dashboard_provider.dart';
+import '../services/api_client.dart';
 
-class MainScreen extends ConsumerWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends ConsumerState<MainScreen> {
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Accueil'),
@@ -21,6 +28,26 @@ class MainScreen extends ConsumerWidget {
                   break;
                 case 'integrations':
                   if (context.mounted) context.push('/integrations');
+                  break;
+                case 'process':
+                  try {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final api = ref.read(apiClientProvider);
+                    final resp = await api.triggerProcessing();
+                    if (!context.mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(
+                          content: Text(resp['message'] ?? 'Traitement lancé')),
+                    );
+                    ref.invalidate(dashboardStatsProvider);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Erreur: $e'),
+                          backgroundColor: Colors.red),
+                    );
+                  }
                   break;
                 case 'settings':
                   if (context.mounted) context.push('/settings');
@@ -38,31 +65,61 @@ class MainScreen extends ConsumerWidget {
               PopupMenuItem(
                 value: 'inbox',
                 child: Row(
-                  children: [Icon(Icons.inbox), SizedBox(width: 12), Text('Inbox')],
+                  children: [
+                    Icon(Icons.inbox),
+                    SizedBox(width: 12),
+                    Text('Inbox')
+                  ],
                 ),
               ),
               PopupMenuItem(
                 value: 'integrations',
                 child: Row(
-                  children: [Icon(Icons.extension), SizedBox(width: 12), Text('Integrations')],
+                  children: [
+                    Icon(Icons.extension),
+                    SizedBox(width: 12),
+                    Text('Integrations')
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'process',
+                child: Row(
+                  children: [
+                    Icon(Icons.autorenew),
+                    SizedBox(width: 12),
+                    Text('Lancer traitement')
+                  ],
                 ),
               ),
               PopupMenuItem(
                 value: 'settings',
                 child: Row(
-                  children: [Icon(Icons.settings), SizedBox(width: 12), Text('Paramètres')],
+                  children: [
+                    Icon(Icons.settings),
+                    SizedBox(width: 12),
+                    Text('Paramètres')
+                  ],
                 ),
               ),
               PopupMenuItem(
                 value: 'profile',
                 child: Row(
-                  children: [Icon(Icons.person), SizedBox(width: 12), Text('Profile')],
+                  children: [
+                    Icon(Icons.person),
+                    SizedBox(width: 12),
+                    Text('Profile')
+                  ],
                 ),
               ),
               PopupMenuItem(
                 value: 'logout',
                 child: Row(
-                  children: [Icon(Icons.logout), SizedBox(width: 12), Text('Sign out')],
+                  children: [
+                    Icon(Icons.logout),
+                    SizedBox(width: 12),
+                    Text('Sign out')
+                  ],
                 ),
               ),
             ],
@@ -76,12 +133,18 @@ class MainScreen extends ConsumerWidget {
           children: [
             Text(
               'Bienvenue dans AI Communication Hub',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Text(
               'Point d’entrée principal. Accédez à votre Inbox, aux intégrations et à votre profil.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Colors.grey),
             ),
             const SizedBox(height: 24),
             Wrap(
@@ -98,18 +161,18 @@ class MainScreen extends ConsumerWidget {
                   title: 'Intégrations',
                   onTap: () => context.push('/integrations'),
                 ),
-              _NavCard(
-                icon: Icons.person,
-                title: 'Profil',
-                onTap: () => context.push('/profile'),
-              ),
-              _NavCard(
-                icon: Icons.settings,
-                title: 'Paramètres',
-                onTap: () => context.push('/settings'),
-              ),
-            ],
-          ),
+                _NavCard(
+                  icon: Icons.person,
+                  title: 'Profil',
+                  onTap: () => context.push('/profile'),
+                ),
+                _NavCard(
+                  icon: Icons.settings,
+                  title: 'Paramètres',
+                  onTap: () => context.push('/settings'),
+                ),
+              ],
+            ),
           ],
         ),
       ),

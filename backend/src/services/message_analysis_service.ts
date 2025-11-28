@@ -1,4 +1,5 @@
 import OllamaClient from './ollama_client';
+import { spamAssassinClient } from './spamassassin_client';
 import { MessageAnalysis, IMessageAnalysis, SentimentType } from '../models/message_analysis';
 import { Message, IMessage } from '../models/message';
 import mongoose from 'mongoose';
@@ -67,9 +68,42 @@ class MessageAnalysisService {
   async detectSpam(messageContent: MessageContent): Promise<SpamDetectionResult> {
     const { subject = 'No subject', from, body } = messageContent;
 
+    // Attempt SpamAssassin first for robust detection
+    let saProb: number | undefined;
+    let saIsSpam: boolean | undefined;
+    try {
+      const sa = await spamAssassinClient.analyzeEmail(subject, from, body);
+      if (sa.available && sa.score !== undefined) {
+        // Map SA score to probability: score/threshold if threshold known, else score*10 capped
+        saProb = sa.threshold && sa.threshold > 0
+          ? Math.min(100, Math.round((sa.score! / sa.threshold) * 100))
+          : Math.min(100, Math.round((sa.score! * 10)));
+        saIsSpam = Boolean(sa.isSpam);
+      }
+    } catch (e) {
+      // ignore SA failures
+    }
+
+    // If SA already strongly indicates spam, short-circuit
+    if (saProb !== undefined && saIsSpam === true && saProb >= this.SPAM_THRESHOLD) {
+      return {
+        isSpam: true,
+        probability: saProb,
+        reasoning: 'SpamAssassin score above threshold'
+      };
+    }
+
     // Check if Ollama is available
     const status = this.ollamaClient.getStatus();
     if (!status.available) {
+      // Combine SA and rule-based if Ollama unavailable
+      if (saProb !== undefined) {
+        return {
+          isSpam: (saIsSpam === true) || saProb >= this.SPAM_THRESHOLD,
+          probability: saProb,
+          reasoning: saIsSpam === true ? 'SpamAssassin indicated spam' : 'SpamAssassin score used'
+        };
+      }
       console.warn('⚠️  MessageAnalysis: Ollama unavailable, using rule-based spam detection');
       return this.ruleBasedSpamDetection(messageContent);
     }
@@ -106,12 +140,19 @@ Respond in valid JSON format only:
       ], { temperature: 0.3 });
 
       const parsed = this.parseJSON(response);
-      const probability = Math.max(0, Math.min(100, parsed.probability || 0));
+      const aiProb = Math.max(0, Math.min(100, parsed.probability || 0));
+
+      // Combine with SA if available: take max probability and merge reasoning
+      const probability = saProb !== undefined ? Math.max(aiProb, saProb) : aiProb;
+      const isSpam = probability >= this.SPAM_THRESHOLD || saIsSpam === true;
+      const parts = [] as string[];
+      if (parsed.reasoning) parts.push(parsed.reasoning);
+      if (saProb !== undefined) parts.push(`SpamAssassin score suggests ${saIsSpam ? 'spam' : 'non-spam'} (${saProb}%)`);
 
       return {
-        isSpam: probability >= this.SPAM_THRESHOLD,
+        isSpam,
         probability,
-        reasoning: parsed.reasoning || 'AI analysis completed'
+        reasoning: parts.length > 0 ? parts.join('; ') : 'Analysis completed'
       };
     } catch (error) {
       console.error('❌ MessageAnalysis: Spam detection failed:', error);

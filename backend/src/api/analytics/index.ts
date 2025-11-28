@@ -1,8 +1,10 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../../middleware/auth';
-import { query, validationResult } from 'express-validator';
+import { body, query, validationResult } from 'express-validator';
 import { aiAnalyticsService } from '../../services/analytics/ai_analytics';
 import { analyticsAggregator } from '../../services/analytics/analytics_aggregator';
+import { messageAnalysisService } from '../../services/message_analysis_service';
+import { Message } from '../../models/message';
 
 /**
  * Analytics API Routes
@@ -419,6 +421,50 @@ router.get(
         error: 'Internal Server Error',
         message: 'Failed to retrieve top contacts'
       });
+    }
+  }
+);
+
+// Test spam detection
+router.post(
+  '/spam/test',
+  [
+    body('messageId').optional().isMongoId(),
+    body('subject').optional().isString(),
+    body('from').optional().isString(),
+    body('body').optional().isString(),
+  ],
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { messageId, subject, from, body } = req.body;
+
+      let content: { subject?: string; from: string; body: string } | null = null;
+      if (messageId) {
+        const message = await Message.findById(messageId);
+        if (!message) {
+          res.status(404).json({ error: 'Not Found', message: 'Message not found' });
+          return;
+        }
+        content = { subject: message.subject || 'No subject', from: message.sender, body: message.content };
+      } else {
+        if (!from || !body) {
+          res.status(400).json({ error: 'Bad Request', message: 'Provide either messageId or from+body (subject optional)' });
+          return;
+        }
+        content = { subject, from, body } as any;
+      }
+
+      const result = await messageAnalysisService.detectSpam(content!);
+      res.json({ success: true, result });
+    } catch (error: any) {
+      console.error('❌ Error testing spam detection:', error);
+      res.status(500).json({ error: 'Internal Server Error', message: 'Failed to test spam detection' });
     }
   }
 );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/dashboard_provider.dart';
 import '../providers/message_stats_provider.dart';
 
 /// Statistics Summary Card Widget
@@ -17,6 +18,7 @@ class StatisticsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(messageStatsProvider);
+    final dashAsync = ref.watch(dashboardStatsProvider);
     final theme = Theme.of(context);
 
     return Card(
@@ -46,11 +48,31 @@ class StatisticsCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _StatItem(
-                    icon: Icons.block,
-                    label: 'Spam Detected',
-                    value: '${stats.spamMessages} (${stats.spamPercentage.toStringAsFixed(1)}%)',
-                    color: Colors.red,
+                  child: dashAsync.when(
+                    data: (d) {
+                      final total = d.totalMessages;
+                      final spam = d.spamDetected;
+                      final pct = total > 0 ? (spam / total * 100) : 0.0;
+                      return _StatItem(
+                        icon: Icons.block,
+                        label: 'Spam Detected',
+                        value: '$spam (${pct.toStringAsFixed(1)}%)',
+                        color: Colors.red,
+                      );
+                    },
+                    loading: () => const _StatItem(
+                      icon: Icons.block,
+                      label: 'Spam Detected',
+                      value: '—',
+                      color: Colors.red,
+                    ),
+                    error: (_, __) => _StatItem(
+                      icon: Icons.block,
+                      label: 'Spam Detected',
+                      value:
+                          '${stats.spamMessages} (${stats.spamPercentage.toStringAsFixed(1)}%)',
+                      color: Colors.red,
+                    ),
                   ),
                 ),
               ],
